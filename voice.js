@@ -1,4 +1,3 @@
-
 const voiceBtn=document.getElementById("voiceBtn");
 const messageInput=document.getElementById("messageInput");
 const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
@@ -10,20 +9,52 @@ let selectedVoice=null;
 let submitted=false;
 let stopRequested=false;
 
+const store={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
+
+function scoreVoice(v){
+ const n=v.name+" "+v.lang;let s=0;
+ if(/^en-IN/i.test(v.lang))s+=6;else if(/^en/i.test(v.lang))s+=3;else if(/^hi/i.test(v.lang))s+=2;else return -1;
+ if(/natural|neural|online|wavenet|studio/i.test(n))s+=8;
+ if(/google/i.test(n))s+=4;
+ if(/female|zira|heera|neerja|samantha|susan|hazel|aria|jenny/i.test(n))s-=9;
+ else if(/male|david|mark|guy|ryan|james|daniel|alex|prabhat|madhur|rishi|christopher|eric|brian|george|arthur/i.test(n))s+=7;
+ if(v.localService===false)s+=2;
+ return s;
+}
+
 function loadDeepVoice(){
  if(!("speechSynthesis" in window))return;
- const voices=window.speechSynthesis.getVoices();
- const english=voices.filter(v=>/^en([-_]|$)/i.test(v.lang));
- selectedVoice=
-  english.find(v=>/male|david|mark|daniel|guy|james|alex/i.test(v.name))||
-  english.find(v=>/en-IN/i.test(v.lang))||
-  english.find(v=>/en-US/i.test(v.lang))||
-  english[0]||null;
+ const all=window.speechSynthesis.getVoices();
+ const list=all.map(v=>({v,s:scoreVoice(v)})).filter(x=>x.s>=0).sort((a,b)=>b.s-a.s).map(x=>x.v);
+ window.aurvixVoices=list;
+ const saved=store.get("aurvixVoice");
+ selectedVoice=list.find(v=>v.name===saved)||list[0]||null;
+ buildVoicePanel();
+}
+
+function buildVoicePanel(){
+ const list=window.aurvixVoices;
+ if(document.getElementById("voiceCfg")||!list||!list.length)return;
+ const host=document.querySelector(".system-panel")||document.querySelector(".chat-panel");
+ if(!host)return;
+ const d=document.createElement("div");d.id="voiceCfg";
+ d.style.cssText="margin-top:10px;font-size:11px;color:#46dc62";
+ const st="background:#020a04;color:#46dc62;border:1px solid #0a4a1c;padding:6px;";
+ d.innerHTML='VOICE<select id="vSel" style="width:100%;margin:4px 0;'+st+'"></select>DEEP / HUMAN<input id="vPitch" type="range" min="0.6" max="1.1" step="0.05" style="width:100%"><button id="vTest" style="'+st+'">TEST VOICE</button>';
+ host.appendChild(d);
+ const sel=d.querySelector("#vSel"),pr=d.querySelector("#vPitch");
+ list.forEach(v=>{const o=document.createElement("option");o.value=v.name;o.textContent=v.name+" ("+v.lang+")";sel.appendChild(o)});
+ if(selectedVoice)sel.value=selectedVoice.name;
+ pr.value=store.get("aurvixPitch")||"0.8";
+ sel.onchange=()=>{store.set("aurvixVoice",sel.value);loadDeepVoice();window.aurvixSpeakOnCommand("AURVIX online. Voice check, sab theek hai.")};
+ pr.onchange=()=>store.set("aurvixPitch",pr.value);
+ d.querySelector("#vTest").onclick=()=>window.aurvixSpeakOnCommand("AURVIX online. Voice check, sab theek hai.");
 }
 
 if("speechSynthesis" in window){
  loadDeepVoice();
  window.speechSynthesis.onvoiceschanged=loadDeepVoice;
+ let tries=0;const iv=setInterval(()=>{loadDeepVoice();if(document.getElementById("voiceCfg")||++tries>10)clearInterval(iv)},800);
 }
 
 function stopSpeaking(){
@@ -41,16 +72,24 @@ function speakReply(text){
  if(!("speechSynthesis" in window))return;
 
  window.speechSynthesis.cancel();
- const clean=String(text).replace(/[*_`#]/g,"").replace(/https?:\/\/\S+/g,"").trim();
+ const clean=String(text).replace(/```[\s\S]*?```/g," code block. ").replace(/[*_`#>~|]/g,"").replace(/https?:\/\/\S+/g,"").replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu,"").replace(/\s+/g," ").trim();
  if(!clean)return;
 
- const speech=new SpeechSynthesisUtterance(clean);
- if(selectedVoice)speech.voice=selectedVoice;
- speech.lang=selectedVoice?.lang||"en-IN";
- speech.rate=0.88;
- speech.pitch=0.55;
- speech.volume=1;
- window.speechSynthesis.speak(speech);
+ const parts=clean.match(/[^.!?\u0964\n]+[.!?\u0964]?/g)||[clean];
+ const chunks=[];let cur="";
+ parts.forEach(p=>{if(cur&&(cur+p).length>170){chunks.push(cur);cur=p}else cur+=p});
+ if(cur)chunks.push(cur);
+
+ const pitch=parseFloat(store.get("aurvixPitch")||"0.8");
+ chunks.forEach(c=>{
+  const u=new SpeechSynthesisUtterance(c.trim());
+  if(selectedVoice)u.voice=selectedVoice;
+  u.lang=selectedVoice?selectedVoice.lang:"en-IN";
+  u.rate=0.95;
+  u.pitch=pitch;
+  u.volume=1;
+  window.speechSynthesis.speak(u);
+ });
 }
 
 window.aurvixSpeakReply=speakReply;
@@ -112,8 +151,6 @@ if(SpeechRecognition){
   if(submitted)return;
   const result=e.results[e.results.length-1];
   if(!result||!result.isFinal)return;
-
-  // Take one final result only; never append repeated updates.
   const text=result[0].transcript.trim();
   sendTranscript(text);
  };
