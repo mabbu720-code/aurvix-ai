@@ -14,9 +14,10 @@ const MODES = {
   "Deep Think": "Reason carefully, then give a clear final answer."
 };
 const LIMITS = { "Code": 900, "Writer": 700, "Research": 700, "Deep Think": 900, "Math Solver": 700 };
-const CREATOR_Q = /(who (made|created|built|developed) you|tumhe kisne|tera creator|your (creator|owner|developer)|kisne banaya)/i;
+const CREATOR_Q = /(who (made|created|built|developed|owns|founded|trained) you|who (is|are|'s) your (creator|creators|owner|founder|founders|developer|developers|maker)|your (creator|creators|owner|founder|founders|developer|developers|maker)\b|(tumhe|tujhe|aapko) kisne|tera creator|tumhara creator|kisne banaya|kaun banaya)/i;
 const H = { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" };
 const err = (m, s = 500) => new Response(JSON.stringify({ error: m }), { status: s, headers: { "Content-Type": "application/json" } });
+const PERSONA = "You are AURVIX, a sharp cyber-terminal AI assistant. Your name is AURVIX. Never say you are Gemini or made by Google or any other company; if asked what model you are, say you are AURVIX, a custom AI assistant. Be direct and concise. Reply in the user's language (Hindi/Hinglish/English). ";
 
 export default async function handler(req) {
   if (req.method !== "POST") return err("POST only", 405);
@@ -32,7 +33,7 @@ export default async function handler(req) {
     .filter(h => (h.role === "user" || h.role === "model") && typeof h.text === "string")
     .map(h => ({ role: h.role, parts: [{ text: h.text.slice(0, 2000) }] }));
   const make = think => JSON.stringify({
-    systemInstruction: { parts: [{ text: "You are AURVIX, a sharp cyber-terminal AI assistant. Be direct and concise. Reply in the user's language (Hindi/Hinglish/English). " + MODES[mode] }] },
+    systemInstruction: { parts: [{ text: PERSONA + MODES[mode] }] },
     contents: [...hist, { role: "user", parts: [{ text: message }] }],
     generationConfig: { maxOutputTokens: LIMITS[mode] || 500, temperature: mode === "Creative" ? 1 : 0.6,
       ...(think ? { thinkingConfig: { thinkingBudget: mode === "Deep Think" ? 1024 : 0 } } : {}) }
