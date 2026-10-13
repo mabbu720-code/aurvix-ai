@@ -1,0 +1,86 @@
+/* AURVIX FX layer: extra animations on top of style.css */
+body:after{content:"";position:fixed;inset:0;z-index:50;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 1px,transparent 1px 3px);mix-blend-mode:multiply;animation:crtFlicker 5s steps(1) infinite}
+body:before{content:"";position:fixed;left:0;right:0;height:90px;top:-90px;z-index:49;pointer-events:none;background:linear-gradient(180deg,transparent,#00ff4118,transparent);animation:sweep 6s linear infinite}
+@keyframes sweep{to{transform:translateY(calc(100vh + 180px))}}
+@keyframes crtFlicker{0%,92%,100%{opacity:1}93%{opacity:.82}95%{opacity:.95}97%{opacity:.78}}
+
+/* glitch title */
+.hero h1,.auth-card h1{position:relative;display:inline-block}
+.hero h1:before,.hero h1:after,.auth-card h1:before,.auth-card h1:after{content:attr(data-text);position:absolute;left:0;top:0;width:100%;overflow:hidden;pointer-events:none}
+.hero h1:before,.auth-card h1:before{color:#ff2bd6;transform:translateX(-2px);animation:glitchA 3.2s infinite steps(1)}
+.hero h1:after,.auth-card h1:after{color:#00e5ff;transform:translateX(2px);animation:glitchB 2.7s infinite steps(1)}
+@keyframes glitchA{0%,90%,100%{clip-path:inset(0 0 100% 0)}91%{clip-path:inset(10% 0 60% 0)}93%{clip-path:inset(55% 0 20% 0)}95%{clip-path:inset(30% 0 45% 0)}}
+@keyframes glitchB{0%,86%,100%{clip-path:inset(0 0 100% 0)}87%{clip-path:inset(60% 0 10% 0)}89%{clip-path:inset(5% 0 75% 0)}91%{clip-path:inset(40% 0 35% 0)}}
+
+/* neon cards and corners */
+.auth-card,.system-panel,.chat-panel{animation:neonBreath 3.5s ease-in-out infinite alternate}
+@keyframes neonBreath{from{box-shadow:0 0 14px #00ff4112,inset 0 0 14px #00ff4108}to{box-shadow:0 0 34px #00ff4140,inset 0 0 24px #00ff4114}}
+.auth-card,.chat-panel{position:relative}
+.auth-card:after,.chat-panel:after{content:"";position:absolute;inset:-1px;pointer-events:none;background:linear-gradient(#00ff41,#00ff41) top left/16px 2px no-repeat,linear-gradient(#00ff41,#00ff41) top left/2px 16px no-repeat,linear-gradient(#00ff41,#00ff41) bottom right/16px 2px no-repeat,linear-gradient(#00ff41,#00ff41) bottom right/2px 16px no-repeat;animation:cornerPulse 1.6s infinite alternate}
+@keyframes cornerPulse{from{opacity:.35}to{opacity:1}}
+
+/* buttons: sweep shine + hover glow */
+.auth-submit,.send-btn,.mode,.icon-btn{position:relative;overflow:hidden;transition:box-shadow .2s,transform .15s}
+.auth-submit:before,.send-btn:before,.mode:before,.icon-btn:before{content:"";position:absolute;top:0;left:-70%;width:40%;height:100%;background:linear-gradient(100deg,transparent,#00ff4140,transparent);transform:skewX(-20deg);transition:left .5s}
+.auth-submit:hover:before,.send-btn:hover:before,.mode:hover:before,.icon-btn:hover:before{left:130%}
+.auth-submit:hover,.send-btn:hover,.mode:hover,.icon-btn:hover{box-shadow:0 0 18px #00ff4166}
+.mode.active{animation:modeGlow 1.8s infinite alternate}
+@keyframes modeGlow{from{box-shadow:0 0 6px #00ff4140}to{box-shadow:0 0 20px #00ff41aa}}
+.icon-btn.listening{border-color:#ff3860!important;color:#ff9aae!important;animation:micPulse .8s infinite}
+@keyframes micPulse{0%{box-shadow:0 0 0 0 #ff386088}100%{box-shadow:0 0 0 14px #ff386000}}
+
+/* chat: typing cursor + thinking dots */
+.bubble.typing:after{content:"▍";margin-left:2px;color:#00ff41;animation:blink .7s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.bubble.thinking{color:#46dc62}
+.bubble.thinking:after{content:"...";display:inline-block;width:1.2em;overflow:hidden;vertical-align:bottom;animation:dots 1s steps(4) infinite}
+@keyframes dots{from{width:0}to{width:1.2em}}
+.message.ai .bubble{box-shadow:0 0 12px #00ff4112}
+.message.user .bubble{animation:userSlide .25s ease-out}
+@keyframes userSlide{from{transform:translateX(18px);opacity:0}to{transform:none;opacity:1}}
+
+/* hero: heavier energy */
+.hacker-figure{animation:hackerFloat 3s ease-in-out infinite,hackerGlitch 7s infinite steps(1)}
+@keyframes hackerGlitch{0%,94%,100%{transform:none}95%{transform:translateX(-4px) skewX(6deg)}96%{transform:translateX(5px) skewX(-8deg)}97%{transform:none}}
+.hacker-scene:before{content:"";position:absolute;inset:0;border-radius:50%;z-index:0;background:radial-gradient(circle,#00ff4126,transparent 65%);animation:orbPulse 2.2s ease-in-out infinite}
+@keyframes orbPulse{0%,100%{transform:scale(.9);opacity:.6}50%{transform:scale(1.18);opacity:1}}
+
+/* boot overlay */
+#bootOverlay{position:fixed;inset:0;z-index:100;background:#010302;color:#00ff41;display:flex;flex-direction:column;justify-content:center;padding:28px;font:12px/1.9 Consolas,monospace;transition:opacity .6s,visibility .6s}
+#bootOverlay.done{opacity:0;visibility:hidden}
+#bootOverlay .bl{opacity:0;animation:bootIn .25s forwards}
+@keyframes bootIn{to{opacity:1}}
+#bootBar{height:3px;margin-top:16px;background:#0a2410}
+#bootBar i{display:block;height:100%;width:0;background:#00ff41;box-shadow:0 0 10px #00ff41;animation:bootFill 2.6s ease-out forwards}
+@keyframes bootFill{to{width:100%}}
+
+@media(prefers-reduced-motion:reduce){body:after,body:before,.hero h1:before,.hero h1:after,.auth-card h1:before,.auth-card h1:after,.hacker-figure,.auth-card,.system-panel,.chat-panel{animation:none!important}}
+
+/* ===== HACKER UPGRADE ===== */
+#matrixCanvas{opacity:.45!important}
+#gridFloor{position:fixed;left:-50%;right:-50%;bottom:0;height:45vh;z-index:0;pointer-events:none;background:linear-gradient(#00ff4133 1px,transparent 1px) 0 0/100% 40px,linear-gradient(90deg,#00ff4133 1px,transparent 1px) 0 0/50px 100%;transform:perspective(300px) rotateX(62deg);transform-origin:bottom;animation:gridMove 1.2s linear infinite;-webkit-mask-image:linear-gradient(transparent,#000 70%);mask-image:linear-gradient(transparent,#000 70%)}
+@keyframes gridMove{to{background-position:0 40px,0 0}}
+#vignette{position:fixed;inset:0;z-index:48;pointer-events:none;background:radial-gradient(ellipse at center,transparent 55%,#000000cc 100%)}
+#alertFlash{position:fixed;inset:0;z-index:60;pointer-events:none;opacity:0;box-shadow:inset 0 0 90px #ff0033}
+body.alert #alertFlash{animation:alertFlash .7s}
+@keyframes alertFlash{0%,40%,80%{opacity:.9}20%,60%,100%{opacity:0}}
+body.shake #app{animation:shake .5s}
+@keyframes shake{10%,90%{transform:translateX(-4px)}30%,70%{transform:translateX(6px)}50%{transform:translateX(-6px)}}
+#hexStream{position:fixed;left:4px;top:0;bottom:0;width:120px;overflow:hidden;z-index:0;pointer-events:none;opacity:.14;font:9px/1.5 monospace;color:#00ff41}
+#hexStream pre{animation:hexScroll 40s linear infinite}
+@keyframes hexScroll{to{transform:translateY(-50%)}}
+body.glitch #app,body.glitch #authScreen{animation:glitchBody .32s steps(2) 1}
+@keyframes glitchBody{0%{transform:translate(0);filter:none}25%{transform:translate(-5px,2px);filter:hue-rotate(90deg) saturate(2)}50%{transform:translate(6px,-2px);filter:drop-shadow(3px 0 #f0f) drop-shadow(-3px 0 #0ff)}75%{transform:translate(-3px,0);filter:hue-rotate(-60deg)}100%{transform:none;filter:none}}
+.ripple{position:fixed;width:12px;height:12px;margin:-6px 0 0 -6px;border:2px solid #00ff41;border-radius:50%;z-index:70;pointer-events:none;animation:rip .7s ease-out forwards}
+@keyframes rip{to{transform:scale(7);opacity:0}}
+.hacker-scene{transition:transform .15s ease-out;will-change:transform}
+.live{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;font-size:9px;color:#46dc62}
+.live small b{color:#caffd2;float:right}
+.live span{display:block;height:4px;background:#0a2410;margin-top:4px}
+.live span i{display:block;height:100%;width:0;background:#00ff41;box-shadow:0 0 6px #00ff41;transition:width .8s}
+.logtick{grid-column:1/-1;color:#7dffa0;white-space:nowrap;overflow:hidden;border-left:2px solid #00ff41;padding-left:6px;min-height:14px;animation:logIn 1.4s infinite}
+@keyframes logIn{0%{opacity:0;transform:translateX(-8px)}15%,85%{opacity:1;transform:none}100%{opacity:.3}}
+.message.ai .bubble{border-left:2px solid #00ff41}
+#granted{position:absolute;left:0;right:0;top:42%;text-align:center;font:bold 32px Consolas,monospace;letter-spacing:6px;color:#00ff41;text-shadow:0 0 18px #00ff41,2px 0 #f0f,-2px 0 #0ff;opacity:0;animation:grantIn .9s steps(1) forwards}
+@keyframes grantIn{0%{opacity:0}10%{opacity:1}20%{opacity:0}30%{opacity:1;transform:translateX(6px)}50%,100%{opacity:1;transform:none}}
+.hexb{color:#087c29}

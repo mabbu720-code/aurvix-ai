@@ -1,0 +1,151 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#020503">
+<title>AURVIX AI | Cyber Terminal</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="fx.css">
+<style>
+#authScreen{position:relative;z-index:2;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:22px 14px;color:#c8ffd1}
+.auth-card{width:100%;max-width:390px;padding:25px 21px;border:1px solid #174d24;background:rgba(2,8,4,.97);box-shadow:0 0 28px #00ff4110,inset 0 0 20px #00ff4108}
+.auth-logo{width:58px;height:58px;margin:0 auto 14px;display:grid;place-items:center;border:1px solid #00ff41;color:#00ff41;font-size:36px;font-weight:bold;box-shadow:0 0 18px #00ff4120}
+.auth-card h1{text-align:center;font-size:27px;letter-spacing:5px;color:#d8ffe0}
+.auth-subtitle{text-align:center;margin:9px 0 22px;font-size:9px;letter-spacing:2px;color:#46dc62}
+.auth-tabs{display:flex;gap:8px;margin-bottom:20px}
+.auth-tab{flex:1;padding:11px;border:1px solid #245b30;background:#050b06;color:#73a77d;font:12px Consolas,monospace}
+.auth-tab.active{border-color:#00ff41;color:#caffd2;background:#0a2410}
+.auth-card form label:not(.show-password){display:block;margin:13px 0 7px;font-size:11px;color:#75d786}
+.auth-card form>input{display:block;width:100%;padding:13px 11px;border:1px solid #23552e;border-radius:2px;background:#020503;color:#caffd2;font:13px Consolas,monospace;outline:none}
+.auth-card form>input:focus{border-color:#00ff41;box-shadow:0 0 10px #00ff4116}
+.auth-card input::placeholder{color:#4b7c55}
+.show-password{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:11px;color:#80b98b}
+.show-password input{accent-color:#00ff41}
+.auth-submit{width:100%;margin-top:20px;padding:14px 8px;border:1px solid #00ff41;background:#09210e;color:#caffd2;font:bold 12px Consolas,monospace;letter-spacing:1px}
+.auth-link{display:block;margin:15px auto 0;border:0;background:none;color:#72d783;font:11px Consolas,monospace;text-decoration:underline}
+.auth-card button{cursor:pointer}
+.auth-card button:disabled{opacity:.55}
+#authMessage{min-height:18px;margin-top:15px;text-align:center;font-size:11px;line-height:1.6;overflow-wrap:anywhere;color:#9affaa}
+.auth-footer{margin-top:18px;text-align:center;font-size:8px;letter-spacing:1px;color:#47794e}
+#app{display:none}
+.account-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 15px;border-bottom:1px solid #174d24;background:#030904;color:#9affaa;font-size:11px}
+#logoutBtn{padding:8px 10px;border:1px solid #286837;background:#061109;color:#00ff41;font:10px Consolas,monospace}
+[hidden]{display:none!important}
+@media(max-width:380px){.auth-card{padding:21px 15px}.auth-card h1{font-size:23px;letter-spacing:3px}}
+</style>
+</head>
+<body>
+<canvas id="matrixCanvas" aria-hidden="true"></canvas>
+
+<section id="authScreen">
+<div class="auth-card">
+<div class="auth-logo">A</div>
+<h1>AURVIX AI</h1>
+<p class="auth-subtitle">SECURE IDENTITY TERMINAL</p>
+<div class="auth-tabs">
+<button type="button" id="loginTab" class="auth-tab active">LOGIN</button>
+<button type="button" id="signupTab" class="auth-tab">SIGN UP</button>
+</div>
+<form id="loginForm">
+<label for="loginEmail">Email address</label>
+<input id="loginEmail" type="email" placeholder="Enter your email" required autocomplete="email">
+<label for="loginPassword">Password</label>
+<input id="loginPassword" type="password" placeholder="Enter password" required autocomplete="current-password">
+<label class="show-password"><input type="checkbox" id="showLoginPassword"> Show password</label>
+<button class="auth-submit" type="submit">ACCESS TERMINAL →</button>
+<button class="auth-link" type="button" id="forgotPassword">Forgot password?</button>
+</form>
+<form id="signupForm" hidden>
+<label for="signupName">Full name</label>
+<input id="signupName" type="text" placeholder="Enter your name" required maxlength="60" autocomplete="name">
+<label for="signupEmail">Email address</label>
+<input id="signupEmail" type="email" placeholder="Enter your email" required autocomplete="email">
+<label for="signupPassword">Password</label>
+<input id="signupPassword" type="password" placeholder="At least 6 characters" required minlength="6" autocomplete="new-password">
+<label for="confirmPassword">Confirm password</label>
+<input id="confirmPassword" type="password" placeholder="Repeat password" required minlength="6" autocomplete="new-password">
+<label class="show-password"><input type="checkbox" id="showSignupPassword"> Show passwords</label>
+<button class="auth-submit" type="submit">CREATE ACCOUNT →</button>
+</form>
+<p id="authMessage" role="status" aria-live="polite"></p>
+<p class="auth-footer">PRIVATE IDENTITY • AURVIX SYSTEM</p>
+</div>
+</section>
+
+<div id="app">
+<div class="account-bar"><span id="accountLabel">IDENTITY: CONNECTING...</span><button id="logoutBtn" type="button">LOGOUT ↗</button></div>
+<header class="topbar">
+<div class="brand"><div class="brand-icon">A</div><div><strong>AURVIX</strong><small>ARTIFICIAL INTELLIGENCE</small></div></div>
+<div class="status"><span class="status-dot"></span><span>SYS.ONLINE</span></div>
+</header>
+<main>
+<section class="hero">
+<div class="terminal-label">[ CYBER INTELLIGENCE // ACTIVE ]</div>
+<div class="hacker-scene">
+<div class="energy-ring energy-ring-1"></div><div class="energy-ring energy-ring-2"></div><div class="energy-ring energy-ring-3"></div><div class="energy-ring energy-ring-4"></div>
+<div class="target-cross cross-1"></div><div class="target-cross cross-2"></div><div class="energy-particles" id="energyParticles"></div>
+<div class="hacker-figure">
+<svg viewBox="0 0 240 240" role="img" aria-label="Animated hacker silhouette with laptop">
+<defs><linearGradient id="hoodGlow" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#62ff80"/><stop offset="50%" stop-color="#00ff41"/><stop offset="100%" stop-color="#064d19"/></linearGradient><filter id="greenGlow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+<path class="hood-outline" d="M57 127 L65 75 Q76 26 120 22 Q164 26 175 75 L183 127 L164 110 L157 85 Q120 63 83 85 L76 110 Z" fill="#041108" stroke="url(#hoodGlow)" stroke-width="3" filter="url(#greenGlow)"/>
+<path d="M78 83 Q120 56 162 83 L151 126 L135 145 L105 145 L89 126 Z" fill="#010402" stroke="#087c29" stroke-width="1.5"/>
+<path class="eye-glow" d="M87 104 L111 111 L98 117 Z M129 111 L153 104 L142 117 Z" fill="#00ff41" filter="url(#greenGlow)"/>
+<path d="M105 135 L120 143 L135 135" fill="none" stroke="#168d37" stroke-width="2"/>
+<path d="M65 128 L48 157 L55 177 L87 164 L105 151 M175 128 L192 157 L185 177 L153 164 L135 151" fill="#041108" stroke="#087c29" stroke-width="2"/>
+<path d="M91 145 L75 171 L64 188 L176 188 L165 171 L149 145" fill="#06170a" stroke="#00b83b" stroke-width="2"/>
+<path d="M60 181 L180 181 L205 211 L35 211 Z" fill="#031007" stroke="#00ff41" stroke-width="2"/>
+<path d="M48 190 L192 190 L205 211 L35 211 Z" fill="#071d0c" stroke="#178f36" stroke-width="1"/>
+<rect x="82" y="190" width="76" height="13" rx="1" fill="#020503" stroke="#00ff41" stroke-width="1.5"/>
+<path d="M90 194 H150 M90 198 H134" stroke="#00ff41" stroke-width="1.5" opacity=".8"/><circle cx="120" cy="196" r="2" fill="#b5ffc2"/><path d="M30 217 H210" stroke="#00ff41" stroke-width="3" filter="url(#greenGlow)"/>
+</svg>
+</div>
+<div class="energy-orbit"></div><div class="scan-beam"></div>
+</div>
+<h1>AURVIX AI</h1><p class="tagline">ADVANCED INTELLIGENCE TERMINAL</p>
+<div class="system-line"><span>›</span> SYSTEM INITIALIZED <span>•</span> ALL SYSTEMS NOMINAL</div>
+<div class="boot-line" id="bootLine">[ CORE ] Establishing secure interface...</div>
+</section>
+<section class="system-panel">
+<div class="panel-heading"><span>◈ SYSTEM MONITOR</span><span id="clock">00:00:00</span></div>
+<div class="monitor-grid"><div><small>CORE STATUS</small><strong><i></i> ACTIVE</strong></div><div><small>AI ENGINE</small><strong>READY</strong></div><div><small>SECURITY</small><strong>AUTHENTICATED</strong></div></div>
+<div class="scan-track"><div class="scan-progress"></div></div>
+</section>
+<section class="chat-panel">
+<div class="panel-heading"><span>◈ COMMAND TERMINAL</span><span class="terminal-live">LIVE</span></div>
+<div id="chatBox" class="chat-box"><div class="message ai"><div class="avatar">AI</div><div class="bubble">System online. I am <b>AURVIX</b>. Enter your command to begin.</div></div></div>
+<div class="mode-title">SELECT AI MODULE <span>› 12 MODULES</span></div>
+<div class="mode-row">
+<button class="mode active" data-mode="General">GENERAL</button><button class="mode" data-mode="Study">STUDY</button><button class="mode" data-mode="Code">CODE</button><button class="mode" data-mode="Writer">WRITER</button><button class="mode" data-mode="Translator">TRANSLATOR</button><button class="mode" data-mode="Math Solver">MATH SOLVER</button><button class="mode" data-mode="Research">RESEARCH</button><button class="mode" data-mode="Summarizer">SUMMARIZER</button><button class="mode" data-mode="Debugger">DEBUGGER</button><button class="mode" data-mode="Creative">CREATIVE</button><button class="mode" data-mode="Quiz Master">QUIZ MASTER</button><button class="mode" data-mode="Deep Think">DEEP THINK</button>
+</div>
+<div class="input-row"><button id="voiceBtn" class="icon-btn" title="Voice input">MIC</button><input id="messageInput" type="text" placeholder="Enter command here..." autocomplete="off"><button id="sendBtn" class="send-btn" aria-label="Send message">➤</button></div>
+<div class="input-hint"><span>ENTER</span> TO EXECUTE <span>MIC</span> VOICE INPUT</div>
+</section>
+</main>
+<footer><span>●</span> AURVIX TERMINAL <span> // </span> CREATED FOR THE FUTURE</footer>
+</div>
+
+<script>
+(()=>{
+const canvas=document.getElementById("matrixCanvas"),ctx=canvas.getContext("2d"),chars="01アイウエオカキクケコABCDEFGHIJKLMNOPQRSTUVWXYZ#$%";
+let drops=[],fontSize=14,columns=0,frame=0;
+function resize(){const dpr=Math.min(window.devicePixelRatio||1,2);canvas.width=innerWidth*dpr;canvas.height=innerHeight*dpr;canvas.style.width=innerWidth+"px";canvas.style.height=innerHeight+"px";ctx.setTransform(dpr,0,0,dpr,0,0);columns=Math.ceil(innerWidth/fontSize);drops=Array.from({length:columns},()=>Math.random()*-60)}
+function draw(){if(document.hidden)return;ctx.fillStyle="rgba(0,0,0,.09)";ctx.fillRect(0,0,innerWidth,innerHeight);ctx.font=fontSize+"px monospace";for(let i=0;i<drops.length;i++){ctx.fillStyle=Math.random()>.96?"#e8fff0":"#00e64d";ctx.fillText(chars[Math.floor(Math.random()*chars.length)],i*fontSize,drops[i]*fontSize);if(drops[i]*fontSize>innerHeight&&Math.random()>.975)drops[i]=0;drops[i]+=.8+Math.random()*.8}frame=requestAnimationFrame(draw)}
+resize();draw();window.addEventListener("resize",resize);document.addEventListener("visibilitychange",()=>{if(!document.hidden){cancelAnimationFrame(frame);draw()}});
+})();
+(()=>{
+const c=document.getElementById("energyParticles");for(let i=0;i<22;i++){const p=document.createElement("i");p.className="particle";p.style.setProperty("--angle",i*16.36+"deg");p.style.setProperty("--delay",-Math.random()*4+"s");p.style.setProperty("--distance",45+Math.random()*40+"px");c.appendChild(p)}
+})();
+(()=>{
+const clock=document.getElementById("clock"),boot=document.getElementById("bootLine");function tick(){clock.textContent=new Date().toLocaleTimeString("en-GB")}tick();setInterval(tick,1000);
+const lines=["[ CORE ] Secure terminal initialized.","[ AI ] Neural interface standing by.","[ STATUS ] Awaiting operator command."];let i=0;setTimeout(()=>{const timer=setInterval(()=>{if(i>=lines.length){clearInterval(timer);return}boot.textContent=lines[i++]},850)},500);
+})();
+</script>
+<script src="themes.js"></script>
+<script src="voice.js"></script>
+<script src="app.js"></script>
+<script src="fx.js"></script>
+<script type="module" src="auth.js"></script>
+</body>
+</html>
