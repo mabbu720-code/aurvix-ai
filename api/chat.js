@@ -31,21 +31,24 @@ export default async function handler(req) {
   const hist = (Array.isArray(b.history) ? b.history : []).slice(-8)
     .filter(h => (h.role === "user" || h.role === "model") && typeof h.text === "string")
     .map(h => ({ role: h.role, parts: [{ text: h.text.slice(0, 2000) }] }));
-  const body = JSON.stringify({
+  const make = think => JSON.stringify({
     systemInstruction: { parts: [{ text: "You are AURVIX, a sharp cyber-terminal AI assistant. Be direct and concise. Reply in the user's language (Hindi/Hinglish/English). " + MODES[mode] }] },
     contents: [...hist, { role: "user", parts: [{ text: message }] }],
     generationConfig: { maxOutputTokens: LIMITS[mode] || 500, temperature: mode === "Creative" ? 1 : 0.6,
-      thinkingConfig: { thinkingBudget: mode === "Deep Think" ? 1024 : 0 } }
+      ...(think ? { thinkingConfig: { thinkingBudget: mode === "Deep Think" ? 1024 : 0 } } : {}) }
   });
+  const call = (m, think) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:streamGenerateContent?alt=sse`,
+    { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": KEY }, body: make(think) });
 
   const base = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
   let r, last = "";
   for (const m of [base, "gemini-3.1-flash-lite", "gemini-3.8-flash", "gemini-3.7-flash"]) {
-    r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:streamGenerateContent?alt=sse`,
-      { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": KEY }, body });
+    r = await call(m, true);
+    if (r.status === 400) r = await call(m, false);
     if (r.ok) break;
-    last = ((await r.json().catch(() => ({}))).error || {}).message || "Gemini error " + r.status;
-    if (![404, 429, 500, 503].includes(r.status)) break;
+    const e = (await r.json().catch(() => ({}))).error || {};
+    last = m + ": " + (e.message || "error " + r.status);
+    if (r.status === 401 || r.status === 403) break;
   }
   if (!r.ok) return err(last, 502);
 
