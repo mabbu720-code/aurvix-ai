@@ -15,9 +15,9 @@ const MODES = {
 };
 const LIMITS = { "Code": 900, "Writer": 700, "Research": 700, "Deep Think": 900, "Math Solver": 700 };
 const CREATOR_Q = /(who (made|created|built|developed|owns|founded|trained) you|who (is|are|'s) your (creator|creators|owner|founder|founders|developer|developers|maker)|your (creator|creators|owner|founder|founders|developer|developers|maker)\b|(tumhe|tujhe|aapko) kisne|tera creator|tumhara creator|kisne banaya|kaun banaya)/i;
+const PERSONA = "You are AURVIX, a sharp cyber-terminal AI assistant. Your name is AURVIX. Never say you are Gemini or made by Google or any other company; if asked what model you are, say you are AURVIX, a custom AI assistant. Be direct and concise. Reply in the user's language (Hindi/Hinglish/English). ";
 const H = { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" };
 const err = (m, s = 500) => new Response(JSON.stringify({ error: m }), { status: s, headers: { "Content-Type": "application/json" } });
-const PERSONA = "You are AURVIX, a sharp cyber-terminal AI assistant. Your name is AURVIX. Never say you are Gemini or made by Google or any other company; if asked what model you are, say you are AURVIX, a custom AI assistant. Be direct and concise. Reply in the user's language (Hindi/Hinglish/English). ";
 
 export default async function handler(req) {
   if (req.method !== "POST") return err("POST only", 405);
@@ -38,20 +38,27 @@ export default async function handler(req) {
     generationConfig: { maxOutputTokens: LIMITS[mode] || 500, temperature: mode === "Creative" ? 1 : 0.6,
       ...(think ? { thinkingConfig: { thinkingBudget: mode === "Deep Think" ? 1024 : 0 } } : {}) }
   });
-  const call = (m, think) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:streamGenerateContent?alt=sse`,
-    { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": KEY }, body: make(think) });
+  const call = async (m, think) => {
+    const c = new AbortController(), t = setTimeout(() => c.abort(), 6000);
+    try {
+      return await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:streamGenerateContent?alt=sse`,
+        { method: "POST", signal: c.signal, headers: { "Content-Type": "application/json", "x-goog-api-key": KEY }, body: make(think) });
+    } finally { clearTimeout(t); }
+  };
 
   const base = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
-  let r, last = "";
-  for (const m of [base, "gemini-3.1-flash-lite", "gemini-3.8-flash", "gemini-3.7-flash"]) {
-    r = await call(m, true);
-    if (r.status === 400) r = await call(m, false);
+  let r = null, last = "";
+  for (const m of [base, "gemini-3.1-flash-lite", "gemini-3.8-flash"]) {
+    try {
+      r = await call(m, true);
+      if (r.status === 400) r = await call(m, false);
+    } catch (e) { r = null; last = m + ": slow, trying next"; continue; }
     if (r.ok) break;
     const e = (await r.json().catch(() => ({}))).error || {};
     last = m + ": " + (e.message || "error " + r.status);
     if (r.status === 401 || r.status === 403) break;
   }
-  if (!r.ok) return err(last, 502);
+  if (!r || !r.ok) return err(last || "Servers busy hain, thodi der baad try karo.", 502);
 
   const dec = new TextDecoder(), enc = new TextEncoder(); let buf = "";
   const out = new TransformStream({ transform(chunk, ctl) {
