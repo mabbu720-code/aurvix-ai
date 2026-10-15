@@ -4,9 +4,8 @@ document.body.classList.add("gated");document.body.style.overflow="hidden";
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 let talking=false,scene=null,done=false,recog=null,sr=null;
 
-// relabel UI (no terminal look)
-document.querySelectorAll(".panel-heading span:first-child").forEach((e,i)=>e.textContent=i?"ASK AURVIX":"VOICE");
-const mt=$(".mode-title");if(mt)mt.firstChild.textContent="CHOOSE MODE ";
+document.querySelectorAll(".panel-heading span:first-child").forEach((e,i)=>e.textContent=i?"AURVIX // INTERFACE":"SYSTEM // VOICE");
+const mt=$(".mode-title");if(mt)mt.firstChild.textContent="SELECT PROTOCOL ";
 const inp=$("#messageInput");if(inp)inp.placeholder="Ask AURVIX anything...";
 
 // auto replies stay silent; speech only when asked
@@ -19,60 +18,47 @@ if(inp)inp.addEventListener("keydown",e=>{if(e.key==="Enter")fix()},true);
 const ov=window.aurvixSendVoiceText;
 if(ov)window.aurvixSendVoiceText=t=>{if(toStop(t)){window.aurvixStopVoice();return}ov(toSpeak(t)?"speak this":t)};
 
-// 3D scene
+// JARVIS-style HUD background (2D canvas, no external library)
 const cv=document.createElement("canvas");cv.id="scene3d";document.body.prepend(cv);
-function init(){
- const T=window.THREE;
- const R=new T.WebGLRenderer({canvas:cv,alpha:true,antialias:true});R.setPixelRatio(Math.min(devicePixelRatio,2));
- const S=new T.Scene();S.fog=new T.FogExp2(0x03040c,.04);
- const C=new T.PerspectiveCamera(48,1,.1,100);
- const fit=()=>{R.setSize(innerWidth,innerHeight);C.aspect=innerWidth/innerHeight;C.updateProjectionMatrix()};fit();addEventListener("resize",fit);
- S.add(new T.AmbientLight(0x30345a,.9));
- const kL=new T.PointLight(0x6a4cff,2.4,30);kL.position.set(-4,5,4);S.add(kL);
- const rL=new T.PointLight(0x2f8bff,2.6,30);rL.position.set(4,3,-3);S.add(rL);
- const dark=new T.MeshStandardMaterial({color:0x0b0c1c,roughness:.5,metalness:.4,side:T.DoubleSide});
- const H=new T.Group();H.visible=false;
- H.add(new T.Mesh(new T.LatheGeometry([[0,0],[1.15,0],[1,1],[.62,2.3],[.42,3],[0,3.2]].map(p=>new T.Vector2(p[0],p[1])),40),dark));
- const sh=new T.Mesh(new T.SphereGeometry(.62,24,16),dark);sh.scale.set(1.5,.55,.8);sh.position.y=2.7;H.add(sh);
- const hd=new T.Mesh(new T.SphereGeometry(.34,24,24),new T.MeshStandardMaterial({color:0x05050c,roughness:.9}));hd.position.y=3.38;H.add(hd);
- const hood=new T.Mesh(new T.ConeGeometry(.5,.9,32,1,true),dark);hood.position.y=3.55;hood.rotation.x=-.12;H.add(hood);
- const eyeM=new T.MeshBasicMaterial({color:0xb7a4ff});
- [-.12,.12].forEach(x=>{const e=new T.Mesh(new T.SphereGeometry(.045,12,12),eyeM);e.position.set(x,3.4,.28);e.scale.set(1.6,.7,1);H.add(e)});
- S.add(H);
- const rings=[1.8,2.4,3.1].map((r,i)=>{const m=new T.Mesh(new T.TorusGeometry(r,.03,8,96),new T.MeshBasicMaterial({color:i%2?0x2f8bff:0x7a5cff,transparent:true,opacity:.85}));m.rotation.x=Math.PI/2;m.position.y=.02;S.add(m);return m});
- const N=700,pos=new Float32Array(N*3),sp=[];
- for(let i=0;i<N;i++){const a=Math.random()*6.28,r=.8+Math.random()*1.7;pos.set([Math.cos(a)*r,Math.random()*5,Math.sin(a)*r],i*3);sp.push(.01+Math.random()*.03)}
- const pg=new T.BufferGeometry();pg.setAttribute("position",new T.BufferAttribute(pos,3));
- const pts=new T.Points(pg,new T.PointsMaterial({color:0x8b6bff,size:.07,transparent:true,opacity:.9,blending:T.AdditiveBlending,depthWrite:false}));S.add(pts);
- let rise=0,on=false,boost=0,px=0,py=0;
- addEventListener("pointermove",e=>{px=e.clientX/innerWidth-.5;py=e.clientY/innerHeight-.5});
- const t0=performance.now();
- (function loop(){
-  const t=(performance.now()-t0)/1000;
-  if(on)rise=Math.min(1,rise+.006);
-  const e=1-Math.pow(1-rise,3);
-  H.position.y=-4.4+4.4*e;H.rotation.y=Math.sin(t*.4)*.25+px*.5;
-  rings.forEach((m,i)=>{m.rotation.z=t*(i%2?-.6:.8);m.scale.setScalar(1+Math.sin(t*2+i)*.02+boost*.25)});
-  const p=pg.attributes.position;
-  for(let i=0;i<N;i++){let y=p.getY(i)+sp[i]*(1+boost*6+(on?1:0));if(y>5.5)y=0;p.setY(i,y)}
-  p.needsUpdate=true;pts.rotation.y=t*.15;
-  eyeM.color.setHex(talking?0xffffff:0xb7a4ff);
-  kL.intensity=2.4+Math.sin(t*3)*.4+boost*6;
-  C.position.set(px*1.4,2.6-py*.8,9.5-e*1.2);C.lookAt(0,.7,0);
-  boost*=.97;R.render(S,C);requestAnimationFrame(loop);
- })();
- scene={rise:()=>{H.visible=true;on=true;boost=1}};
-}
-const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js";s.onload=()=>{try{init()}catch(e){}};document.head.appendChild(s);
+const cx=cv.getContext("2d");let W,H,X,Y,R,boost=0,ph=0,last=performance.now(),hex=[];
+const fit=()=>{const d=Math.min(devicePixelRatio,2);W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;cx.setTransform(d,0,0,d,0,0)};fit();addEventListener("resize",fit);
+const dots=Array.from({length:30},()=>({r:.3+Math.random()*.7,a:Math.random()*6.28,v:(Math.random()-.5)*.6}));
+const mkHex=()=>{hex=Array.from({length:9},()=>"0x"+Math.floor(Math.random()*65535).toString(16).toUpperCase().padStart(4,"0")+" "+Math.floor(Math.random()*99))};mkHex();setInterval(mkHex,600);
+const col=a=>"rgba(0,212,255,"+a+")";
+const arc=(r,a0,a1,w,al)=>{cx.beginPath();cx.arc(X,Y,r,a0,a1);cx.lineWidth=w;cx.strokeStyle=col(al);cx.stroke()};
+const ticks=(r,n,rot,len,al)=>{cx.beginPath();for(let i=0;i<n;i++){const a=i*6.2832/n+rot,l=i%5?len:len*2;cx.moveTo(X+Math.cos(a)*r,Y+Math.sin(a)*r);cx.lineTo(X+Math.cos(a)*(r+l),Y+Math.sin(a)*(r+l))}cx.lineWidth=1.2;cx.strokeStyle=col(al);cx.stroke()};
+(function loop(){
+ const now=performance.now(),dt=(now-last)/1000;last=now;
+ ph+=dt*(talking?1.9:1);
+ X=W/2;Y=H*.34;R=Math.min(W*.46,H*.3)*(1+boost*.22);
+ const al=.55+boost*.4+(talking?.2:0);
+ cx.clearRect(0,0,W,H);cx.globalCompositeOperation="lighter";
+ ticks(R,120,ph*.1,6,al*.8);
+ for(let i=0;i<4;i++)arc(R*.88,-ph*.2+i*1.5708,-ph*.2+i*1.5708+1.1,5,al);
+ arc(R*.8,0,6.3,1,.25);
+ for(let i=0;i<8;i++){const a=ph*.3+i*.785;cx.beginPath();cx.arc(X+Math.cos(a)*R*.8,Y+Math.sin(a)*R*.8,3,0,6.3);cx.fillStyle=col(al);cx.fill()}
+ for(let i=0;i<3;i++)arc(R*.68,ph*.45+i*2.09,ph*.45+i*2.09+1.5,3,al);
+ ticks(R*.58,60,-ph*.25,4,al*.7);
+ const g=R*.4;
+ for(let i=0;i<8;i++){cx.beginPath();cx.ellipse(X,Y,Math.abs(Math.cos(ph*.5+i*.3927))*g,g,0,0,6.3);cx.lineWidth=1;cx.strokeStyle=col(.35*al);cx.stroke()}
+ for(let i=-2;i<=2;i++){const sy=Math.sin(i*.5)*g,rx=Math.cos(i*.5)*g;cx.beginPath();cx.ellipse(X,Y+sy,rx,rx*.25,0,0,6.3);cx.lineWidth=1;cx.strokeStyle=col(.35*al);cx.stroke()}
+ if(cx.createConicGradient){const c=cx.createConicGradient(ph*.8,X,Y);c.addColorStop(0,col(.35));c.addColorStop(.12,col(0));c.addColorStop(1,col(0));cx.fillStyle=c;cx.beginPath();cx.arc(X,Y,R*.78,0,6.3);cx.fill()}
+ const cr=R*(.14+Math.sin(ph*4)*.012+(talking?.04:0)+boost*.08),gr=cx.createRadialGradient(X,Y,0,X,Y,cr*2.4);
+ gr.addColorStop(0,"rgba(220,252,255,.95)");gr.addColorStop(.35,col(.6));gr.addColorStop(1,col(0));cx.fillStyle=gr;cx.beginPath();cx.arc(X,Y,cr*2.4,0,6.3);cx.fill();
+ dots.forEach(d=>{d.a+=d.v*dt*(talking?1.9:1);cx.beginPath();cx.arc(X+Math.cos(d.a)*R*d.r,Y+Math.sin(d.a)*R*d.r,1.8,0,6.3);cx.fillStyle=col(.7);cx.fill()});
+ cx.globalCompositeOperation="source-over";cx.font="10px monospace";cx.fillStyle=col(.5);
+ hex.forEach((h,i)=>{cx.fillText(h,10,Y-R*.6+i*14);cx.fillText(h,W-60,Y-R*.6+i*14)});
+ boost*=.97;requestAnimationFrame(loop);
+})();
+scene={rise:()=>{boost=1}};
 
-// ARISE gate
+// voice authorization gate
 const g=document.createElement("div");g.id="gate";
-g.innerHTML='<div class="sysbox"><div class="sys-tag">SHADOW PROTOCOL</div><div class="sys-title">AWAKEN AURVIX</div><div class="sys-sub">Speak the word to begin.</div><div class="say">ARISE</div><button id="ariseMic" type="button">TAP &amp; SPEAK</button><input id="ariseIn" placeholder="or type: arise" autocomplete="off"><div id="ariseMsg"></div></div>';
+g.innerHTML='<div class="hud"><small>VOICE AUTHORIZATION</small><h2>INITIALIZE AURVIX</h2><div class="reactor"><i></i><i></i><i></i><button id="ariseMic" type="button">TAP &amp; SAY</button></div><div class="say">ARISE</div><input id="ariseIn" placeholder="or type: arise" autocomplete="off"><div id="ariseMsg"></div></div>';
 document.body.appendChild(g);
 const OK=/\b(a\s?rise|arise|arize|areas|aries)\b/i;
 const mic=$("#ariseMic"),ai=$("#ariseIn"),msg=$("#ariseMsg");
 
-// Jarvis HUD
 const jv=document.createElement("div");jv.id="jarvis";jv.innerHTML='<div id="wave">'+"<i></i>".repeat(18)+'</div><div id="jtxt"></div>';document.body.appendChild(jv);
 const sbtn=document.createElement("button");sbtn.id="stopBtn";sbtn.textContent="■ STOP";sbtn.onclick=()=>window.aurvixStopVoice();document.body.appendChild(sbtn);
 
@@ -82,7 +68,7 @@ function unlock(){
  g.classList.add("go");scene&&scene.rise();
  if(navigator.vibrate)navigator.vibrate([80,40,200]);
  const h=new Date().getHours(),w=h<12?"Good morning":h<17?"Good afternoon":"Good evening";
- const line=w+", sir. Shadow protocol is online. All systems are operational, and I am ready for your command.";
+ const line=w+", sir. All systems are online. I am ready for your command.";
  setTimeout(()=>{$("#jtxt").textContent=line;jv.classList.add("show");try{window.aurvixSpeakOnCommand(line)}catch(e){}},1500);
  setTimeout(()=>{g.classList.add("out");document.body.classList.remove("gated");document.body.style.overflow="";setTimeout(()=>g.remove(),1200)},2800);
 }
@@ -93,7 +79,7 @@ mic.onclick=()=>{
  recog.onstart=()=>{mic.classList.add("on");mic.textContent="LISTENING";msg.textContent=""};
  recog.onresult=e=>{for(let i=e.resultIndex;i<e.results.length;i++)for(let j=0;j<e.results[i].length;j++)if(OK.test(e.results[i][j].transcript)){unlock();return}};
  recog.onerror=e=>{msg.textContent=e.error==="not-allowed"?"Mic permission allow karo":"Awaaz saaf nahi aayi, dobara bolo"};
- recog.onend=()=>{mic.classList.remove("on");mic.textContent="TAP & SPEAK";if(!done&&!msg.textContent)msg.textContent="Sirf 'ARISE' bolo"};
+ recog.onend=()=>{mic.classList.remove("on");mic.textContent="TAP & SAY";if(!done&&!msg.textContent)msg.textContent="Sirf 'ARISE' bolo"};
  try{recog.start()}catch(e){msg.textContent="Dobara tap karo"}
 };
 ai.onkeydown=e=>{if(e.key==="Enter"){OK.test(ai.value)?unlock():msg.textContent="Galat shabd. Bolo: ARISE"}};
