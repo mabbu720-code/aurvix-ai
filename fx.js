@@ -35,7 +35,24 @@ if(inp)inp.addEventListener("keydown",e=>{if(e.key==="Enter")fix()},true);
 const ov=window.aurvixSendVoiceText;
 if(ov)window.aurvixSendVoiceText=t=>{if(toStop(t)){window.aurvixStopVoice();return}ov(toSpeak(t)?"speak this":t)};
 
-
+// ElevenLabs voice (falls back to the browser voice if it fails)
+const origSpeak=window.aurvixSpeakOnCommand,origStop=window.aurvixStopVoice;
+let au=null,ctl=null,playing=false;const vcache=new Map();
+function stopAll(){try{ctl&&ctl.abort()}catch(e){}ctl=null;if(au){au.onpause=au.onended=null;au.pause();au=null}playing=false}
+window.aurvixStopVoice=()=>{stopAll();if(origStop)origStop()};
+window.aurvixSpeakOnCommand=async text=>{
+ stopAll();if(window.speechSynthesis)speechSynthesis.cancel();
+ const clean=String(text).replace(/```[\s\S]*?```/g," code block. ").replace(/[*_`#>~|]/g,"").replace(/https?:\/\/\S+/g,"").replace(/\s+/g," ").trim().slice(0,480);
+ if(!clean)return;
+ ctl=new AbortController();const c=ctl;
+ try{
+  let url=vcache.get(clean);
+  if(!url){const r=await fetch("/api/tts",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:clean}),signal:c.signal});if(!r.ok)throw new Error("tts");url=URL.createObjectURL(await r.blob());vcache.set(clean,url)}
+  if(c.signal.aborted)return;
+  au=new Audio(url);au.onplaying=()=>{playing=true};au.onended=au.onpause=()=>{playing=false};
+  await au.play();
+ }catch(e){if(c.signal.aborted)return;if(origSpeak)origSpeak(text)}
+};
 // ARISE gate
 const g=document.createElement("div");g.id="gate";
 g.innerHTML='<div class="g-tag">AURVIX</div><div class="say">Say &ldquo;Arise&rdquo;</div><div class="g-hint">to wake your assistant</div><button id="ariseMic" class="cap" type="button"><svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V22h2v-3.08A7 7 0 0 0 19 12z"/></svg><span class="bars"><i></i><i></i><i></i><i></i><i></i></span><b>Tap to speak</b></button><input id="ariseIn" placeholder="or type arise" autocomplete="off"><div id="ariseMsg"></div>';
@@ -77,7 +94,7 @@ function listenStop(on){
   sr.onend=()=>{if(talking)try{sr.start()}catch(e){}};sr.start()}catch(e){}
 }
 setInterval(()=>{
- const t=!!(window.speechSynthesis&&speechSynthesis.speaking);
+  const t=playing||!!(window.speechSynthesis&&speechSynthesis.speaking);
  if(t!==talking){talking=t;document.body.classList.toggle("talking",t);if(done)edge.className=t?"hot":"";listenStop(t);if(!t)setTimeout(()=>{if(!talking)jv.classList.remove("show")},1800)}
 },200);
 
