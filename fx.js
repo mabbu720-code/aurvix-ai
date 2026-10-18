@@ -86,9 +86,9 @@ mic.onclick=()=>{
 };
 ai.onkeydown=e=>{if(e.key==="Enter"){OK.test(ai.value)?unlock():msg.textContent="Galat shabd. Bolo: Arise"}};
 
-// listen for "stop" while AI is speaking
+// listen for "stop" while AI is speaking (disabled: the mic made the audio choppy on phones)
 function listenStop(on){
- if(!SR)return;
+ return;
  if(!on){try{sr&&sr.abort()}catch(e){}sr=null;return}
  try{sr=new SR();sr.lang="en-IN";sr.continuous=true;sr.interimResults=true;
   sr.onresult=e=>{for(let i=e.resultIndex;i<e.results.length;i++)if(/\b(stop|ruko|ruk|chup|bas|band)\b/i.test(e.results[i][0].transcript)){window.aurvixStopVoice();return}};
@@ -113,15 +113,53 @@ if(box)new MutationObserver(l=>l.forEach(m=>m.addedNodes.forEach(n=>{
 }))).observe(box,{childList:true});
 })();
 
-// ===== PAGES: Chat / Modes / Account with glass tab bar =====
+// ===== PAGES: Home / Chat / Modes / Account with glass tab bar =====
 ;(()=>{
 const $=s=>document.querySelector(s);
+const css=`
+#tabbar{width:min(92vw,400px)}
+#tabbar .ti{width:calc((100% - 10px)/4)}
+#pgHome{padding-top:4px}
+.hm-top{display:flex;justify-content:space-between;align-items:center;margin:4px 6px 12px}
+.hm-time{font:500 13px Inter,sans-serif;opacity:.7}
+.hm-pill{font:600 12px Inter,sans-serif;padding:5px 12px;border-radius:999px;background:linear-gradient(135deg,rgba(255,255,255,.16),rgba(255,255,255,.04));border:1px solid rgba(255,255,255,.25);color:#7dffa6}
+.hm-hello{margin:0 6px;font:200 38px/1.08 Inter,sans-serif;letter-spacing:-1.5px!important}
+.hm-name{font-weight:600;background:linear-gradient(90deg,#fff,#a9b8ff,#ff9fd0);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-shadow:none!important}
+.hm-orbwrap{position:relative;height:230px;display:grid;place-items:center;margin:2px 0}
+.hm-orbwrap .orb{width:150px;height:150px;margin:0;animation:breathe 3.2s ease-in-out infinite alternate}
+.hm-orbwrap:before,.hm-orbwrap:after{content:"";position:absolute;left:50%;top:50%;width:150px;height:150px;margin:-75px 0 0 -75px;border-radius:50%;border:1.5px solid rgba(255,255,255,.45);animation:hmr 3.6s ease-out infinite}
+.hm-orbwrap:after{animation-delay:1.8s}
+@keyframes hmr{from{transform:scale(1);opacity:.6}to{transform:scale(2.1);opacity:0}}
+.hm-orbwrap .bl{position:absolute;width:170px;height:170px;border-radius:50%;filter:blur(18px);opacity:.55;animation:hmf 9s ease-in-out infinite alternate}
+.hm-orbwrap .b1{left:6%;top:10%;background:radial-gradient(circle,#0a84ff,transparent 65%)}
+.hm-orbwrap .b2{right:4%;bottom:6%;background:radial-gradient(circle,#ff375f,transparent 65%);animation-delay:-4s}
+@keyframes hmf{from{transform:translate3d(-14px,8px,0)}to{transform:translate3d(16px,-10px,0)}}
+.hm-ask,.hm-chip,.hm-tile,.hm-row{position:relative;background:linear-gradient(135deg,rgba(255,255,255,.14),rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.24);box-shadow:0 6px 22px rgba(0,0,0,.16),inset 0 1.5px 0 rgba(255,255,255,.55),inset 0 -1px 0 rgba(255,255,255,.08);backdrop-filter:blur(12px) saturate(140%);-webkit-backdrop-filter:blur(12px) saturate(140%);color:#fff;font-family:Inter,sans-serif}
+.hm-ask{display:flex;align-items:center;gap:8px;padding:8px 8px 8px 20px;border-radius:999px;margin:4px 2px 12px;animation:pop .6s cubic-bezier(.2,1.2,.3,1) both}
+.hm-ask input{flex:1;min-width:0;background:transparent!important;border:0!important;outline:0;font-size:16px;color:#fff;padding:10px 0}
+.hm-ask button{width:46px;height:46px;border-radius:50%;border:0;background:linear-gradient(135deg,#0a84ff,#7a6bff);color:#fff;font-size:18px;box-shadow:0 6px 18px rgba(10,132,255,.5)}
+.hm-chips{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 10px;scrollbar-width:none}
+.hm-chips::-webkit-scrollbar{display:none}
+.hm-chip{flex:0 0 auto;padding:11px 18px;border-radius:999px;font:600 14px Inter,sans-serif;animation:pop .5s cubic-bezier(.2,1.2,.3,1) both;animation-delay:calc(var(--k)*55ms);transition:transform .3s cubic-bezier(.2,1.7,.4,1)}
+.hm-chip:active,.hm-row:active,.hm-ask button:active{transform:scale(.93)}
+.hm-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:4px 2px 6px}
+.hm-tile{padding:14px 12px;border-radius:22px;animation:pop .6s cubic-bezier(.2,1.2,.3,1) both;animation-delay:calc(var(--k)*70ms + .2s)}
+.hm-tile small{display:block;opacity:.65;font-size:11px;margin-bottom:4px}
+.hm-tile b{font:600 14px Inter,sans-serif}
+.hm-h{margin:14px 6px 8px;font:600 15px Inter,sans-serif;opacity:.8}
+.hm-row{display:block;width:100%;text-align:left;padding:15px 18px;border-radius:20px;margin:0 0 9px;font:500 14px/1.35 Inter,sans-serif;animation:pop .5s cubic-bezier(.2,1.2,.3,1) both;animation-delay:calc(var(--k)*70ms + .4s);transition:transform .3s cubic-bezier(.2,1.7,.4,1)}
+`;
+document.head.appendChild(Object.assign(document.createElement("style"),{textContent:css}));
 
-
-const app=$("#app"),main=$("main"),hero=$(".hero"),sys=$(".system-panel"),chat=$(".chat-panel"),top=$(".topbar"),foot=$("footer"),lo=$("#logoutBtn"),al=$("#accountLabel"),inp=$("#messageInput");
+const app=$("#app"),main=$("main"),hero=$(".hero"),sys=$(".system-panel"),chat=$(".chat-panel"),top=$(".topbar"),foot=$("footer"),lo=$("#logoutBtn"),al=$("#accountLabel"),inp=$("#messageInput"),sendB=$("#sendBtn");
 if(!app||!main||!chat)return;
 const pg=id=>{const d=document.createElement("section");d.id=id;d.className="pg";return d};
-const pC=pg("pgChat"),pM=pg("pgModes"),pA=pg("pgAccount");
+const pH=pg("pgHome"),pC=pg("pgChat"),pM=pg("pgModes"),pA=pg("pgAccount");
+
+// home page
+pH.innerHTML='<div class="hm-top"><span class="hm-time"></span><span class="hm-pill">● Online</span></div><div class="hm-hello"><div class="hi">Hello,</div><div class="hm-name">there</div></div><div class="hm-orbwrap"><span class="bl b1"></span><span class="bl b2"></span><div class="orb"><i></i></div></div><div class="hm-ask"><input id="hmIn" placeholder="Ask AURVIX anything..." autocomplete="off"><button id="hmGo" type="button" aria-label="Send">&#10148;</button></div><div class="hm-chips"></div><div class="hm-tiles"><div class="hm-tile" style="--k:0"><small>Mode</small><b class="hmm">General</b></div><div class="hm-tile" style="--k:1"><small>Voice</small><b>ElevenLabs</b></div><div class="hm-tile" style="--k:2"><small>Status</small><b>Ready</b></div></div><h3 class="hm-h">Try asking</h3><div class="hm-sug"></div>';
+const hmTime=pH.querySelector(".hm-time"),hmHi=pH.querySelector(".hi"),hmName=pH.querySelector(".hm-name"),hmMode=pH.querySelector(".hmm"),hmIn=pH.querySelector("#hmIn");
+const tick=()=>{const d=new Date(),h=d.getHours();hmHi.textContent=h<12?"Good morning,":h<17?"Good afternoon,":"Good evening,";hmTime.textContent=d.toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"short"})+" \u00b7 "+d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})};tick();setInterval(tick,30000);
 
 // chat page
 const pill=document.createElement("button");pill.id="modePill";pill.type="button";pill.innerHTML='<span>General</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
@@ -131,32 +169,46 @@ pC.append(top,pill,chat);
 pM.innerHTML='<h2 class="lt">Modes</h2><p class="ls">Choose how AURVIX thinks</p><div class="grid"></div>';
 const grid=pM.querySelector(".grid");
 const MD={General:["💬","Everyday questions"],Study:["📚","Simple explanations"],Code:["💻","Write and explain code"],Writer:["✍️","Polished writing"],Translator:["🌐","Any language"],"Math Solver":["➗","Step-by-step solutions"],Research:["🔎","Structured overviews"],Summarizer:["📝","Short, clear summaries"],Debugger:["🐞","Find and fix bugs"],Creative:["🎨","Imaginative ideas"],"Quiz Master":["🎯","Test your knowledge"],"Deep Think":["🧠","Careful reasoning"]};
+const setMode=n=>{const b=[...chat.querySelectorAll(".mode")].find(x=>x.dataset.mode===n);if(!b)return;b.click();pill.querySelector("span").textContent=n;hmMode.textContent=n;grid.querySelectorAll(".mc").forEach(x=>x.classList.toggle("on",x.querySelector("b").textContent===n))};
 chat.querySelectorAll(".mode").forEach((b,k)=>{
  const n=b.dataset.mode,d=MD[n]||["✨",""],c=document.createElement("button");
  c.type="button";c.className="mc"+(b.classList.contains("active")?" on":"");c.style.setProperty("--k",k);
  c.innerHTML='<span class="ic">'+d[0]+'</span><b>'+n+'</b><small>'+d[1]+'</small>';
- c.onclick=()=>{b.click();grid.querySelectorAll(".mc").forEach(x=>x.classList.remove("on"));c.classList.add("on");pill.querySelector("span").textContent=n;setTimeout(()=>go("chat"),240)};
+ c.onclick=()=>{setMode(n);setTimeout(()=>go("chat"),240)};
  grid.appendChild(c);
 });
+
+// home actions
+const ask=t=>{go("chat");inp.value=t;sendB.click()};
+[["✍️ Write","Writer","Write "],["💻 Code","Code","Write code to "],["🌐 Translate","Translator","Translate to Hindi: "],["📚 Study","Study","Explain "],["🧠 Think","Deep Think",""],["🎯 Quiz","Quiz Master","Quiz me on "]].forEach((a,k)=>{
+ const c=document.createElement("button");c.type="button";c.className="hm-chip";c.style.setProperty("--k",k);c.textContent=a[0];
+ c.onclick=()=>{setMode(a[1]);go("chat");inp.value=a[2];inp.focus()};pH.querySelector(".hm-chips").appendChild(c);
+});
+["Explain quantum computing in simple words","Write a short poem about the night sky","Give me 5 healthy breakfast ideas"].forEach((t,k)=>{
+ const r=document.createElement("button");r.type="button";r.className="hm-row";r.style.setProperty("--k",k);r.textContent=t;r.onclick=()=>ask(t);pH.querySelector(".hm-sug").appendChild(r);
+});
+const sendHome=()=>{const v=hmIn.value.trim();if(v){hmIn.value="";ask(v)}};
+pH.querySelector("#hmGo").onclick=sendHome;hmIn.addEventListener("keydown",e=>{if(e.key==="Enter")sendHome()});
 
 // account page
 const prof=document.createElement("div");prof.className="prof";prof.innerHTML='<div class="pav" id="pav">A</div><div><div class="pn" id="pn">Account</div><div class="ps">Signed in</div></div>';
 pA.innerHTML='<h2 class="lt">Account</h2><p class="ls">Profile, voice and sign out</p>';
 pA.append(prof);if(sys)pA.append(sys);if(lo)pA.append(lo);if(hero)pA.append(hero);if(foot)pA.append(foot);
 const pn=prof.querySelector("#pn"),pv=prof.querySelector("#pav");
-const upd=()=>{if(!al)return;const n=al.textContent.replace(/^IDENTITY:\s*/i,"").trim()||"Account";pn.textContent=n;pv.textContent=(n[0]||"A").toUpperCase()};
+const upd=()=>{if(!al)return;const n=al.textContent.replace(/^IDENTITY:\s*/i,"").trim()||"Account";pn.textContent=n;pv.textContent=(n[0]||"A").toUpperCase();hmName.textContent=(n.split(/[ @]/)[0]||"there")};
 if(al){new MutationObserver(upd).observe(al,{childList:true,characterData:true,subtree:true});upd()}
-if(lo)lo.addEventListener("click",()=>setTimeout(()=>go("chat"),300));
+if(lo)lo.addEventListener("click",()=>setTimeout(()=>go("home"),300));
 
-main.append(pC,pM,pA);
+main.append(pH,pC,pM,pA);
 
 // glass tab bar
-const IC={chat:'<path d="M21 12a8 8 0 0 1-11.5 7.2L4 20l1-4.3A8 8 0 1 1 21 12z"/>',modes:'<rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/>',account:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>'};
+const IC={home:'<path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v10h13V10"/>',chat:'<path d="M21 12a8 8 0 0 1-11.5 7.2L4 20l1-4.3A8 8 0 1 1 21 12z"/>',modes:'<rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/>',account:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>'};
+const order=["home","chat","modes","account"],pages=[pH,pC,pM,pA];
 const tb=document.createElement("nav");tb.id="tabbar";
-tb.innerHTML='<i class="ti"></i>'+["chat","modes","account"].map(p=>'<button type="button" data-p="'+p+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+IC[p]+'</svg><span>'+p[0].toUpperCase()+p.slice(1)+'</span></button>').join("");
+tb.innerHTML='<i class="ti"></i>'+order.map(p=>'<button type="button" data-p="'+p+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+IC[p]+'</svg><span>'+p[0].toUpperCase()+p.slice(1)+'</span></button>').join("");
 app.appendChild(tb);
 
-const order=["chat","modes","account"],pages=[pC,pM,pA];let cur=0;
+let cur=0;
 function go(p){
  const i=order.indexOf(p);if(i<0)return;
  pages.forEach((e,k)=>{e.dataset.d=i>=cur?"r":"l";e.classList.toggle("on",k===i)});
@@ -166,7 +218,7 @@ function go(p){
 }
 tb.addEventListener("click",e=>{const b=e.target.closest("button");if(b)go(b.dataset.p)});
 pill.onclick=()=>go("modes");
-go("chat");
+go("home");
 
 // keep the Apple-style placeholder
 if(inp)new MutationObserver(()=>{if(inp.placeholder==="Enter command here...")inp.placeholder="Message AURVIX"}).observe(inp,{attributes:true,attributeFilter:["placeholder"]});
