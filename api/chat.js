@@ -15,7 +15,8 @@ const MODES = {
 };
 const LIMITS = { "Code": 900, "Writer": 700, "Research": 700, "Deep Think": 900, "Math Solver": 700 };
 const CREATOR_Q = /(who (made|created|built|developed|owns|founded|trained) you|who (is|are|'s) your (creator|creators|owner|founder|founders|developer|developers|maker)|your (creator|creators|owner|founder|founders|developer|developers|maker)\b|(tumhe|tujhe|aapko) kisne|tera creator|tumhara creator|kisne banaya|kaun banaya)/i;
-const PERSONA = "You are AURVIX, a sharp cyber-terminal AI assistant. Your name is AURVIX. Never say you are Gemini or made by Google or any other company; if asked what model you are, say you are AURVIX, a custom AI assistant. Be direct and concise. Reply in the user's language (Hindi/Hinglish/English). ";
+const PERSONA = "You are AURVIX, a smart voice-first personal assistant like JARVIS. Your name is AURVIX. Never say you are Gemini or made by Google or any other company; if asked what model you are, say you are AURVIX, a custom AI assistant. First understand exactly what the user wants, then help accurately. Reply in the same language the user used: if they use Hindi, answer in natural Hindi written in Devanagari script; if English, answer in clear English; if they mix Hindi and English, answer in simple Hindi (Devanagari) and keep common English words as they are. Be direct and concise. After answering, add one short final line that starts with 'Next step:' (or in Hindi 'अगला कदम:') suggesting the most useful next action, phrased as a question when natural. ";
+const VOICE = "This is a live spoken conversation. Speak naturally in at most three short sentences, then the next-step line. Do not use lists, markdown, emoji, code or links. ";
 const H = { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" };
 const err = (m, s = 500) => new Response(JSON.stringify({ error: m }), { status: s, headers: { "Content-Type": "application/json" } });
 
@@ -33,9 +34,9 @@ export default async function handler(req) {
     .filter(h => (h.role === "user" || h.role === "model") && typeof h.text === "string")
     .map(h => ({ role: h.role, parts: [{ text: h.text.slice(0, 2000) }] }));
   const make = think => JSON.stringify({
-    systemInstruction: { parts: [{ text: PERSONA + MODES[mode] }] },
+    systemInstruction: { parts: [{ text: PERSONA + (b.voice ? VOICE : "") + MODES[mode] }] },
     contents: [...hist, { role: "user", parts: [{ text: message }] }],
-    generationConfig: { maxOutputTokens: LIMITS[mode] || 500, temperature: mode === "Creative" ? 1 : 0.6,
+    generationConfig: { maxOutputTokens: b.voice ? 300 : (LIMITS[mode] || 500), temperature: mode === "Creative" ? 1 : 0.6,
       ...(think ? { thinkingConfig: { thinkingBudget: mode === "Deep Think" ? 1024 : 0 } } : {}) }
   });
   const call = async (m, think) => {

@@ -25,8 +25,11 @@ const showF=x=>{lf.hidden=x;sf.hidden=!x;lt.classList.toggle("active",!x);st.cla
 if(lt&&st&&lf&&sf){lt.addEventListener("click",()=>showF(false));st.addEventListener("click",()=>showF(true))}
 const pwt=(c,ids)=>{const e=$(c);if(e)e.addEventListener("change",()=>ids.forEach(i=>{const f=$(i);if(f)f.type=e.checked?"text":"password"}))};
 pwt("#showLoginPassword",["#loginPassword"]);pwt("#showSignupPassword",["#signupPassword","#confirmPassword"]);
-// auto replies stay silent; speech only when asked
-window.aurvixSpeakReply=()=>{};
+// auto replies stay silent unless a voice conversation is running
+let convo=false,lang=localStorage.getItem("aurvixLang")||"hi-IN",heard="",lrec=null,idle=0,thinkT=null;
+window.aurvixSpeakReply=t=>{if(convo){clearTimeout(thinkT);setState("speaking",t);window.aurvixSpeakOnCommand(t)}};
+const _f=window.fetch.bind(window);
+window.fetch=(u,o)=>{try{if(convo&&typeof u==="string"&&u.endsWith("/api/chat")&&o&&o.body){const b=JSON.parse(o.body);b.voice=true;b.lang=lang;o=Object.assign({},o,{body:JSON.stringify(b)})}}catch(e){}return _f(u,o)};
 const toStop=t=>/^\s*(ruko|ruk jao|chup|chup ho jao|bas|band karo|stop)\W*$/i.test(t);
 const toSpeak=t=>/^\s*(bolo|bol do|bol|sunao|padho|bolke batao)\W*$/i.test(t);
 const fix=()=>{if(!inp)return;const v=inp.value;if(toStop(v)){window.aurvixStopVoice();inp.value=""}else if(toSpeak(v))inp.value="speak this"};
@@ -54,6 +57,39 @@ window.aurvixSpeakOnCommand=async text=>{
  }catch(e){if(c.signal.aborted)return;if(origSpeak)origSpeak(text)}
 };
 
+// ===== Voice conversation (hands-free, Hindi / English) =====
+function setState(st,txt){
+ const M={idle:"Tap to start a voice conversation",listening:"Listening... speak now",thinking:"Thinking...",speaking:"Speaking..."};
+ document.body.className=document.body.className.replace(/\bcv-\w+/g,"").trim();if(st!=="idle")document.body.classList.add("cv-"+st);
+ const hs=$("#hmState");if(hs)hs.textContent=M[st];
+ const tk=$("#hmTalk b");if(tk)tk.textContent=convo?"End conversation":"Talk to AURVIX";
+ if(convo){$("#jtxt").textContent=st==="listening"?(txt||"Listening..."):st==="thinking"?(txt?"\u201c"+txt+"\u201d":"..."):(txt||"").slice(0,170);jv.classList.add("show");edge.className=(st==="listening"||st==="speaking")?"hot":"show"}
+}
+function startListen(){
+ if(!convo||!SR)return;
+ try{lrec&&lrec.abort()}catch(e){}
+ const r=lrec=new SR();r.lang=lang;r.interimResults=true;r.maxAlternatives=1;heard="";
+ r.onstart=()=>setState("listening");
+ r.onresult=e=>{let t="",fin=false;for(let i=e.resultIndex;i<e.results.length;i++){t+=e.results[i][0].transcript;if(e.results[i].isFinal)fin=true}if(t)setState("listening",t);if(fin)heard=t.trim()};
+ r.onerror=e=>{if(e.error==="not-allowed"||e.error==="service-not-allowed")endConvo()};
+ r.onend=()=>{
+  if(!convo||lrec!==r)return;
+  if(heard){const x=heard;heard="";idle=0;
+   if(/^\s*(stop|bye|goodbye|exit|thank you|thanks|bas|bas karo|band karo|ruko|alvida|\u092c\u0938|\u092c\u0938 \u0915\u0930\u094b|\u0930\u0941\u0915\u094b|\u092c\u0902\u0926 \u0915\u0930\u094b|\u0927\u0928\u094d\u092f\u0935\u093e\u0926|\u0905\u0932\u0935\u093f\u0926\u093e)\W*$/i.test(x)){endConvo();return}
+   setState("thinking",x);clearTimeout(thinkT);thinkT=setTimeout(()=>{if(convo&&!talking)startListen()},45000);
+   if(window.aurvixSendVoiceText)window.aurvixSendVoiceText(x);
+  }else if(++idle>=3)endConvo();else setTimeout(startListen,300)
+ };
+ try{r.start()}catch(e){if(++idle>=3)endConvo();else setTimeout(startListen,500)}
+}
+function startConvo(){if(!SR){const hs=$("#hmState");if(hs)hs.textContent="Voice input is not supported in this browser";return}convo=true;idle=0;setState("listening");startListen()}
+function endConvo(){convo=false;clearTimeout(thinkT);try{lrec&&lrec.abort()}catch(e){}lrec=null;idle=0;window.aurvixStopVoice();setState("idle");jv.classList.remove("show");edge.className=""}
+document.addEventListener("click",e=>{
+ if(e.target.closest("#hmTalk")){convo?endConvo():startConvo();return}
+ const l=e.target.closest("#hmLang");
+ if(l){lang=lang==="hi-IN"?"en-IN":"hi-IN";localStorage.setItem("aurvixLang",lang);l.textContent=lang==="hi-IN"?"\u0939\u093f\u0928\u094d\u0926\u0940":"English";if(convo)startListen()}
+});
+
 // ARISE gate
 const g=document.createElement("div");g.id="gate";
 g.innerHTML='<div class="g-tag">AURVIX</div><div class="say">Say &ldquo;Arise&rdquo;</div><div class="g-hint">to wake your assistant</div><button id="ariseMic" class="cap" type="button"><svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V22h2v-3.08A7 7 0 0 0 19 12z"/></svg><span class="bars"><i></i><i></i><i></i><i></i><i></i></span><b>Tap to speak</b></button><input id="ariseIn" placeholder="or type arise" autocomplete="off"><div id="ariseMsg"></div>';
@@ -63,7 +99,7 @@ const OK=/\b(a\s?rise|arise|arize|areas|aries)\b/i;
 const mic=$("#ariseMic"),mt2=mic.querySelector("b"),ai=$("#ariseIn"),msg=$("#ariseMsg");
 
 const jv=document.createElement("div");jv.id="jarvis";jv.innerHTML='<div id="wave">'+"<i></i>".repeat(18)+'</div><div id="jtxt"></div>';document.body.appendChild(jv);
-const sbtn=document.createElement("button");sbtn.id="stopBtn";sbtn.textContent="■ Stop";sbtn.onclick=()=>window.aurvixStopVoice();document.body.appendChild(sbtn);
+const sbtn=document.createElement("button");sbtn.id="stopBtn";sbtn.textContent="■ Stop";sbtn.onclick=()=>{if(convo)endConvo();else window.aurvixStopVoice()};document.body.appendChild(sbtn);
 
 function unlock(){
  if(done)return;done=true;
@@ -96,7 +132,7 @@ function listenStop(on){
 }
 setInterval(()=>{
  const t=playing||!!(window.speechSynthesis&&speechSynthesis.speaking);
- if(t!==talking){talking=t;document.body.classList.toggle("talking",t);if(done)edge.className=t?"hot":"";listenStop(t);if(!t)setTimeout(()=>{if(!talking)jv.classList.remove("show")},1800)}
+ if(t!==talking){talking=t;document.body.classList.toggle("talking",t);if(done)edge.className=t?"hot":"";listenStop(t);if(!t){if(convo)setTimeout(()=>{if(convo&&!talking)startListen()},500);else setTimeout(()=>{if(!talking)jv.classList.remove("show")},1800)}}
 },200);
 
 // chat: typing effect, thinking dots, SPEAK button per answer
@@ -146,6 +182,14 @@ const css=`
 .hm-tile{padding:14px 12px;border-radius:22px;animation:pop .6s cubic-bezier(.2,1.2,.3,1) both;animation-delay:calc(var(--k)*70ms + .2s)}
 .hm-tile small{display:block;opacity:.65;font-size:11px;margin-bottom:4px}
 .hm-tile b{font:600 14px Inter,sans-serif}
+.hm-talk{display:flex;gap:10px;justify-content:center;margin:2px 0 6px}
+#hmTalk{display:flex;align-items:center;gap:10px;padding:14px 26px;border-radius:999px;border:1px solid rgba(255,255,255,.35);background:linear-gradient(135deg,rgba(10,132,255,.55),rgba(191,90,242,.35));color:#fff;font:600 16px Inter,sans-serif;box-shadow:0 10px 30px rgba(10,132,255,.45),inset 0 1.5px 0 rgba(255,255,255,.7);transition:transform .3s cubic-bezier(.2,1.7,.4,1)}
+#hmTalk:active{transform:scale(.94)}
+#hmLang{padding:14px 18px;border-radius:999px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;font:600 14px Inter,sans-serif}
+.hm-state{text-align:center;font:500 13px Inter,sans-serif;opacity:.75;margin:0 0 12px;min-height:18px}
+body.cv-listening .hm-orbwrap .orb,body.cv-speaking .hm-orbwrap .orb{animation:breathe .6s ease-in-out infinite alternate}
+body.cv-listening #hmTalk{animation:mp 1.2s infinite}
+body.cv-thinking .hm-orbwrap .orb i{animation-duration:1.4s}
 .hm-h{margin:14px 6px 8px;font:600 15px Inter,sans-serif;opacity:.8}
 .hm-row{display:block;width:100%;text-align:left;padding:15px 18px;border-radius:20px;margin:0 0 9px;font:500 14px/1.35 Inter,sans-serif;animation:pop .5s cubic-bezier(.2,1.2,.3,1) both;animation-delay:calc(var(--k)*70ms + .4s);transition:transform .3s cubic-bezier(.2,1.7,.4,1)}
 `;
@@ -157,7 +201,7 @@ const pg=id=>{const d=document.createElement("section");d.id=id;d.className="pg"
 const pH=pg("pgHome"),pC=pg("pgChat"),pM=pg("pgModes"),pA=pg("pgAccount");
 
 // home page
-pH.innerHTML='<div class="hm-top"><span class="hm-time"></span><span class="hm-pill">● Online</span></div><div class="hm-hello"><div class="hi">Hello,</div><div class="hm-name">there</div></div><div class="hm-orbwrap"><span class="bl b1"></span><span class="bl b2"></span><div class="orb"><i></i></div></div><div class="hm-ask"><input id="hmIn" placeholder="Ask AURVIX anything..." autocomplete="off"><button id="hmGo" type="button" aria-label="Send">&#10148;</button></div><div class="hm-chips"></div><div class="hm-tiles"><div class="hm-tile" style="--k:0"><small>Mode</small><b class="hmm">General</b></div><div class="hm-tile" style="--k:1"><small>Voice</small><b>ElevenLabs</b></div><div class="hm-tile" style="--k:2"><small>Status</small><b>Ready</b></div></div><h3 class="hm-h">Try asking</h3><div class="hm-sug"></div>';
+pH.innerHTML='<div class="hm-top"><span class="hm-time"></span><span class="hm-pill">● Online</span></div><div class="hm-hello"><div class="hi">Hello,</div><div class="hm-name">there</div></div><div class="hm-orbwrap"><span class="bl b1"></span><span class="bl b2"></span><div class="orb"><i></i></div></div><div class="hm-talk"><button id="hmTalk" type="button"><span>\ud83c\udf99</span><b>Talk to AURVIX</b></button><button id="hmLang" type="button">'+(localStorage.getItem("aurvixLang")==="en-IN"?"English":"\u0939\u093f\u0928\u094d\u0926\u0940")+'</button></div><div class="hm-state" id="hmState">Tap to start a voice conversation</div><div class="hm-ask"><input id="hmIn" placeholder="Ask AURVIX anything..." autocomplete="off"><button id="hmGo" type="button" aria-label="Send">&#10148;</button></div><div class="hm-chips"></div><div class="hm-tiles"><div class="hm-tile" style="--k:0"><small>Mode</small><b class="hmm">General</b></div><div class="hm-tile" style="--k:1"><small>Voice</small><b>ElevenLabs</b></div><div class="hm-tile" style="--k:2"><small>Status</small><b>Ready</b></div></div><h3 class="hm-h">Try asking</h3><div class="hm-sug"></div>';
 const hmTime=pH.querySelector(".hm-time"),hmHi=pH.querySelector(".hi"),hmName=pH.querySelector(".hm-name"),hmMode=pH.querySelector(".hmm"),hmIn=pH.querySelector("#hmIn");
 const tick=()=>{const d=new Date(),h=d.getHours();hmHi.textContent=h<12?"Good morning,":h<17?"Good afternoon,":"Good evening,";hmTime.textContent=d.toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"short"})+" \u00b7 "+d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})};tick();setInterval(tick,30000);
 
@@ -168,58 +212,4 @@ pC.append(top,pill,chat);
 // modes page
 pM.innerHTML='<h2 class="lt">Modes</h2><p class="ls">Choose how AURVIX thinks</p><div class="grid"></div>';
 const grid=pM.querySelector(".grid");
-const MD={General:["💬","Everyday questions"],Study:["📚","Simple explanations"],Code:["💻","Write and explain code"],Writer:["✍️","Polished writing"],Translator:["🌐","Any language"],"Math Solver":["➗","Step-by-step solutions"],Research:["🔎","Structured overviews"],Summarizer:["📝","Short, clear summaries"],Debugger:["🐞","Find and fix bugs"],Creative:["🎨","Imaginative ideas"],"Quiz Master":["🎯","Test your knowledge"],"Deep Think":["🧠","Careful reasoning"]};
-const setMode=n=>{const b=[...chat.querySelectorAll(".mode")].find(x=>x.dataset.mode===n);if(!b)return;b.click();pill.querySelector("span").textContent=n;hmMode.textContent=n;grid.querySelectorAll(".mc").forEach(x=>x.classList.toggle("on",x.querySelector("b").textContent===n))};
-chat.querySelectorAll(".mode").forEach((b,k)=>{
- const n=b.dataset.mode,d=MD[n]||["✨",""],c=document.createElement("button");
- c.type="button";c.className="mc"+(b.classList.contains("active")?" on":"");c.style.setProperty("--k",k);
- c.innerHTML='<span class="ic">'+d[0]+'</span><b>'+n+'</b><small>'+d[1]+'</small>';
- c.onclick=()=>{setMode(n);setTimeout(()=>go("chat"),240)};
- grid.appendChild(c);
-});
-
-// home actions
-const ask=t=>{go("chat");inp.value=t;sendB.click()};
-[["✍️ Write","Writer","Write "],["💻 Code","Code","Write code to "],["🌐 Translate","Translator","Translate to Hindi: "],["📚 Study","Study","Explain "],["🧠 Think","Deep Think",""],["🎯 Quiz","Quiz Master","Quiz me on "]].forEach((a,k)=>{
- const c=document.createElement("button");c.type="button";c.className="hm-chip";c.style.setProperty("--k",k);c.textContent=a[0];
- c.onclick=()=>{setMode(a[1]);go("chat");inp.value=a[2];inp.focus()};pH.querySelector(".hm-chips").appendChild(c);
-});
-["Explain quantum computing in simple words","Write a short poem about the night sky","Give me 5 healthy breakfast ideas"].forEach((t,k)=>{
- const r=document.createElement("button");r.type="button";r.className="hm-row";r.style.setProperty("--k",k);r.textContent=t;r.onclick=()=>ask(t);pH.querySelector(".hm-sug").appendChild(r);
-});
-const sendHome=()=>{const v=hmIn.value.trim();if(v){hmIn.value="";ask(v)}};
-pH.querySelector("#hmGo").onclick=sendHome;hmIn.addEventListener("keydown",e=>{if(e.key==="Enter")sendHome()});
-
-// account page
-const prof=document.createElement("div");prof.className="prof";prof.innerHTML='<div class="pav" id="pav">A</div><div><div class="pn" id="pn">Account</div><div class="ps">Signed in</div></div>';
-pA.innerHTML='<h2 class="lt">Account</h2><p class="ls">Profile, voice and sign out</p>';
-pA.append(prof);if(sys)pA.append(sys);if(lo)pA.append(lo);if(hero)pA.append(hero);if(foot)pA.append(foot);
-const pn=prof.querySelector("#pn"),pv=prof.querySelector("#pav");
-const upd=()=>{if(!al)return;const n=al.textContent.replace(/^IDENTITY:\s*/i,"").trim()||"Account";pn.textContent=n;pv.textContent=(n[0]||"A").toUpperCase();hmName.textContent=(n.split(/[ @]/)[0]||"there")};
-if(al){new MutationObserver(upd).observe(al,{childList:true,characterData:true,subtree:true});upd()}
-if(lo)lo.addEventListener("click",()=>setTimeout(()=>go("home"),300));
-
-main.append(pH,pC,pM,pA);
-
-// glass tab bar
-const IC={home:'<path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v10h13V10"/>',chat:'<path d="M21 12a8 8 0 0 1-11.5 7.2L4 20l1-4.3A8 8 0 1 1 21 12z"/>',modes:'<rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/>',account:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>'};
-const order=["home","chat","modes","account"],pages=[pH,pC,pM,pA];
-const tb=document.createElement("nav");tb.id="tabbar";
-tb.innerHTML='<i class="ti"></i>'+order.map(p=>'<button type="button" data-p="'+p+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+IC[p]+'</svg><span>'+p[0].toUpperCase()+p.slice(1)+'</span></button>').join("");
-app.appendChild(tb);
-
-let cur=0;
-function go(p){
- const i=order.indexOf(p);if(i<0)return;
- pages.forEach((e,k)=>{e.dataset.d=i>=cur?"r":"l";e.classList.toggle("on",k===i)});
- tb.style.setProperty("--i",i);
- tb.querySelectorAll("button").forEach((b,k)=>b.classList.toggle("on",k===i));
- cur=i;window.scrollTo({top:0,behavior:"smooth"});
-}
-tb.addEventListener("click",e=>{const b=e.target.closest("button");if(b)go(b.dataset.p)});
-pill.onclick=()=>go("modes");
-go("home");
-
-// keep the Apple-style placeholder
-if(inp)new MutationObserver(()=>{if(inp.placeholder==="Enter command here...")inp.placeholder="Message AURVIX"}).observe(inp,{attributes:true,attributeFilter:["placeholder"]});
-})();
+const MD={General:["💬","Everyday questions"],Study:["📚","Simple explanations"],Code:["💻","Write and explain code"],Writer:["✍️","Polished writing"],Translator:["🌐","Any language"],"Math S
