@@ -267,3 +267,94 @@ go("home");
 // keep the Apple-style placeholder
 if(inp)new MutationObserver(()=>{if(inp.placeholder==="Enter command here...")inp.placeholder="Message AURVIX"}).observe(inp,{attributes:true,attributeFilter:["placeholder"]});
 })(); 
+// ===== HISTORY: saves every conversation, ChatGPT-style list =====
+;(()=>{
+const $=s=>document.querySelector(s);
+const box=$("#chatBox"),main=$("main"),tb=$("#tabbar"),al=$("#accountLabel");
+if(!box||!main||!tb||typeof addMessage!=="function")return;
+const css=`
+#tabbar{width:min(94vw,420px)}
+#tabbar .ti{width:calc((100% - 10px)/5)}
+#tabbar button span{font-size:10px}
+#pgHistory{padding-top:4px}
+.hs-bar{display:flex;gap:10px;margin:0 2px 12px}
+.hs-new,.hs-clear,.hs-search,.hs-row{background:linear-gradient(135deg,rgba(255,255,255,.14),rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.24);box-shadow:0 6px 22px rgba(0,0,0,.16),inset 0 1.5px 0 rgba(255,255,255,.55);backdrop-filter:blur(12px) saturate(140%);-webkit-backdrop-filter:blur(12px) saturate(140%);color:#fff;font-family:Inter,sans-serif}
+.hs-new{flex:1;padding:14px;border-radius:999px;font:600 15px Inter,sans-serif;background:linear-gradient(135deg,rgba(10,132,255,.6),rgba(122,107,255,.4))}
+.hs-clear{padding:14px 18px;border-radius:999px;font:600 13px Inter,sans-serif;color:#ff9fb0!important}
+.hs-search{display:block;width:calc(100% - 4px);margin:0 2px 8px;padding:13px 18px;border-radius:999px;font-size:15px;outline:0}
+.hs-g{margin:14px 8px 6px;font:600 12px Inter,sans-serif;opacity:.65}
+.hs-row{display:flex;align-items:center;gap:10px;width:100%;padding:13px 14px 13px 18px;border-radius:20px;margin:0 0 8px;animation:pop .45s cubic-bezier(.2,1.2,.3,1) both;animation-delay:calc(var(--k)*35ms)}
+.hs-t{flex:1;min-width:0}
+.hs-t b{display:block;font:600 15px Inter,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hs-t small{opacity:.6;font-size:12px}
+.hs-x{flex:0 0 auto;width:34px;height:34px;border-radius:50%;border:0;background:rgba(255,255,255,.1);color:#fff;font-size:14px}
+.hs-empty{text-align:center;opacity:.6;margin:40px 10px;font-size:15px;line-height:1.4}
+`;
+document.head.appendChild(Object.assign(document.createElement("style"),{textContent:css}));
+
+const user=()=>((al&&al.textContent)||"").replace(/^IDENTITY:\s*/i,"").trim()||"guest";
+const KEY=()=>"aurvixHistory::"+user();
+const load=()=>{try{return JSON.parse(localStorage.getItem(KEY())||"[]")}catch(e){return[]}};
+const save=l=>{try{localStorage.setItem(KEY(),JSON.stringify(l.slice(0,200)))}catch(e){}};
+let curId=null;const first=box.querySelector(".message");
+
+// page + tab
+const page=document.createElement("section");page.id="pgHistory";page.className="pg";
+page.innerHTML='<h2 class="lt">History</h2><p class="ls">Your past conversations</p><div class="hs-bar"><button class="hs-new" type="button">+ New chat</button><button class="hs-clear" type="button">Clear all</button></div><input class="hs-search" placeholder="Search chats..." autocomplete="off"><div class="hs-list"></div>';
+main.appendChild(page);
+const hb=document.createElement("button");hb.type="button";hb.dataset.p="history";
+hb.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>History</span>';
+tb.appendChild(hb);
+const goTab=p=>{const b=tb.querySelector('button[data-p="'+p+'"]');if(b)b.click()};
+function showHistory(){
+ render();document.querySelectorAll(".pg").forEach(e=>e.classList.toggle("on",e===page));
+ page.dataset.d="r";tb.style.setProperty("--i",4);tb.querySelectorAll("button").forEach(b=>b.classList.toggle("on",b===hb));
+ window.scrollTo({top:0,behavior:"smooth"});
+}
+tb.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;if(b===hb)showHistory();else page.classList.remove("on")});
+const lo=$("#logoutBtn");if(lo)lo.addEventListener("click",()=>setTimeout(()=>page.classList.remove("on"),350));
+
+// save every conversation automatically
+const snap=()=>[...box.querySelectorAll(".message")].map(n=>{const b=n.querySelector(".bubble");return{role:n.classList.contains("user")?"user":"model",text:b?b.textContent.trim():"",skip:n===first||!!(b&&b.classList.contains("thinking"))}}).filter(m=>m.text&&!m.skip&&m.text!=="Processing"&&!/^Error:/.test(m.text)).map(m=>({role:m.role,text:m.text}));
+let tm=null;
+new MutationObserver(()=>{clearTimeout(tm);tm=setTimeout(persist,900)}).observe(box,{childList:true,subtree:true,characterData:true});
+function persist(){
+ const ms=snap();if(!ms.some(m=>m.role==="user"))return;
+ const l=load();let c=l.find(x=>x.id===curId);
+ if(c&&JSON.stringify(c.messages)===JSON.stringify(ms))return;
+ if(!c){c={id:Date.now().toString(36),title:"",mode:"General",ts:0,messages:[]};curId=c.id;l.unshift(c)}
+ c.messages=ms;c.ts=Date.now();c.mode=typeof mode==="string"?mode:"General";
+ c.title=ms.find(m=>m.role==="user").text.replace(/\s+/g," ").slice(0,48);
+ l.sort((a,b)=>b.ts-a.ts);save(l);if(page.classList.contains("on"))render();
+}
+
+// list, search, open, delete
+const list=page.querySelector(".hs-list"),sq=page.querySelector(".hs-search");
+const grp=ts=>{const s=x=>new Date(x.getFullYear(),x.getMonth(),x.getDate()).getTime(),d=(s(new Date())-s(new Date(ts)))/864e5;return d<=0?"Today":d<=1?"Yesterday":d<=7?"Previous 7 days":"Earlier"};
+function render(){
+ const q=sq.value.trim().toLowerCase(),l=load().filter(c=>!q||c.title.toLowerCase().includes(q)||c.messages.some(m=>m.text.toLowerCase().includes(q)));
+ list.innerHTML="";
+ if(!l.length){list.innerHTML='<div class="hs-empty">'+(q?"No chats found":"No conversations yet.<br>Start chatting and it will be saved here.")+"</div>";return}
+ let last="",k=0;
+ l.forEach(c=>{
+  const g=grp(c.ts);if(g!==last){last=g;const h=document.createElement("div");h.className="hs-g";h.textContent=g;list.appendChild(h)}
+  const r=document.createElement("div");r.className="hs-row";r.style.setProperty("--k",k++);
+  r.innerHTML='<div class="hs-t"><b></b><small></small></div><button class="hs-x" type="button" aria-label="Delete">&#10005;</button>';
+  r.querySelector("b").textContent=c.title||"Chat";
+  const d=new Date(c.ts);r.querySelector("small").textContent=c.mode+" \u00b7 "+(g==="Today"||g==="Yesterday"?d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}):d.toLocaleDateString())+" \u00b7 "+c.messages.length+" msgs";
+  r.querySelector(".hs-t").onclick=()=>openConv(c);
+  r.querySelector(".hs-x").onclick=ev=>{ev.stopPropagation();if(confirm("Delete this chat?")){save(load().filter(x=>x.id!==c.id));if(curId===c.id)curId=null;render()}};
+  list.appendChild(r);
+ });
+}
+function clearChat(){[...box.children].forEach(n=>{if(n!==first)n.remove()});try{hist.length=0}catch(e){}}
+function openConv(c){
+ curId=c.id;clearChat();
+ try{hist.push(...c.messages.slice(-8))}catch(e){}
+ c.messages.forEach(m=>addMessage(m.text,m.role==="user"?"user":"ai"));
+ goTab("chat");setTimeout(()=>{box.scrollTop=box.scrollHeight},500);
+}
+sq.oninput=render;
+page.querySelector(".hs-new").onclick=()=>{curId=null;clearChat();goTab("chat")};
+page.querySelector(".hs-clear").onclick=()=>{if(confirm("Delete ALL chat history?")){save([]);curId=null;render()}};
+})();
