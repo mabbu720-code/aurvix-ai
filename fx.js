@@ -212,4 +212,58 @@ pC.append(top,pill,chat);
 // modes page
 pM.innerHTML='<h2 class="lt">Modes</h2><p class="ls">Choose how AURVIX thinks</p><div class="grid"></div>';
 const grid=pM.querySelector(".grid");
-const MD={General:["💬","Everyday questions"],Study:["📚","Simple explanations"],Code:["💻","Write and explain code"],Writer:["✍️","Polished writing"],Translator:["🌐","Any language"],"Math S
+const MD={General:["💬","Everyday questions"],Study:["📚","Simple explanations"],Code:["💻","Write and explain code"],Writer:["✍️","Polished writing"],Translator:["🌐","Any language"],"MathSolver":["➗","Step-by-step solutions"],Research:["🔎","Structured overviews"],Summarizer:["📝","Short, clear summaries"],Debugger:["🐞","Find and fix bugs"],Creative:["🎨","Imaginative ideas"],"Quiz Master":["🎯","Test your knowledge"],"Deep Think":["🧠","Careful reasoning"]};
+const setMode=n=>{const b=[...chat.querySelectorAll(".mode")].find(x=>x.dataset.mode===n);if(!b)return;b.click();pill.querySelector("span").textContent=n;hmMode.textContent=n;grid.querySelectorAll(".mc").forEach(x=>x.classList.toggle("on",x.querySelector("b").textContent===n))};
+chat.querySelectorAll(".mode").forEach((b,k)=>{
+ const n=b.dataset.mode,d=MD[n]||["✨",""],c=document.createElement("button");
+ c.type="button";c.className="mc"+(b.classList.contains("active")?" on":"");c.style.setProperty("--k",k);
+ c.innerHTML='<span class="ic">'+d[0]+'</span><b>'+n+'</b><small>'+d[1]+'</small>';
+ c.onclick=()=>{setMode(n);setTimeout(()=>go("chat"),240)};
+ grid.appendChild(c);
+});
+
+// home actions
+const ask=t=>{go("chat");inp.value=t;sendB.click()};
+[["✍️ Write","Writer","Write "],["💻 Code","Code","Write code to "],["🌐 Translate","Translator","Translate to Hindi: "],["📚 Study","Study","Explain "],["🧠 Think","Deep Think",""],["🎯 Quiz","Quiz Master","Quiz me on "]].forEach((a,k)=>{
+ const c=document.createElement("button");c.type="button";c.className="hm-chip";c.style.setProperty("--k",k);c.textContent=a[0];
+ c.onclick=()=>{setMode(a[1]);go("chat");inp.value=a[2];inp.focus()};pH.querySelector(".hm-chips").appendChild(c);
+});
+["Explain quantum computing in simple words","Write a short poem about the night sky","Give me 5 healthy breakfast ideas"].forEach((t,k)=>{
+ const r=document.createElement("button");r.type="button";r.className="hm-row";r.style.setProperty("--k",k);r.textContent=t;r.onclick=()=>ask(t);pH.querySelector(".hm-sug").appendChild(r);
+});
+const sendHome=()=>{const v=hmIn.value.trim();if(v){hmIn.value="";ask(v)}};
+pH.querySelector("#hmGo").onclick=sendHome;hmIn.addEventListener("keydown",e=>{if(e.key==="Enter")sendHome()});
+
+// account page
+const prof=document.createElement("div");prof.className="prof";prof.innerHTML='<div class="pav" id="pav">A</div><div><div class="pn" id="pn">Account</div><div class="ps">Signed in</div></div>';
+pA.innerHTML='<h2 class="lt">Account</h2><p class="ls">Profile, voice and sign out</p>';
+pA.append(prof);if(sys)pA.append(sys);if(lo)pA.append(lo);if(hero)pA.append(hero);if(foot)pA.append(foot);
+const pn=prof.querySelector("#pn"),pv=prof.querySelector("#pav");
+const upd=()=>{if(!al)return;const n=al.textContent.replace(/^IDENTITY:\s*/i,"").trim()||"Account";pn.textContent=n;pv.textContent=(n[0]||"A").toUpperCase();hmName.textContent=(n.split(/[ @]/)[0]||"there")};
+if(al){new MutationObserver(upd).observe(al,{childList:true,characterData:true,subtree:true});upd()}
+if(lo)lo.addEventListener("click",()=>setTimeout(()=>go("home"),300));
+
+main.append(pH,pC,pM,pA);
+
+// glass tab bar
+const IC={home:'<path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v10h13V10"/>',chat:'<path d="M21 12a8 8 0 0 1-11.5 7.2L4 20l1-4.3A8 8 0 1 1 21 12z"/>',modes:'<rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/>',account:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>'};
+const order=["home","chat","modes","account"],pages=[pH,pC,pM,pA];
+const tb=document.createElement("nav");tb.id="tabbar";
+tb.innerHTML='<i class="ti"></i>'+order.map(p=>'<button type="button" data-p="'+p+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+IC[p]+'</svg><span>'+p[0].toUpperCase()+p.slice(1)+'</span></button>').join("");
+app.appendChild(tb);
+
+let cur=0;
+function go(p){
+ const i=order.indexOf(p);if(i<0)return;
+ pages.forEach((e,k)=>{e.dataset.d=i>=cur?"r":"l";e.classList.toggle("on",k===i)});
+ tb.style.setProperty("--i",i);
+ tb.querySelectorAll("button").forEach((b,k)=>b.classList.toggle("on",k===i));
+ cur=i;window.scrollTo({top:0,behavior:"smooth"});
+}
+tb.addEventListener("click",e=>{const b=e.target.closest("button");if(b)go(b.dataset.p)});
+pill.onclick=()=>go("modes");
+go("home");
+
+// keep the Apple-style placeholder
+if(inp)new MutationObserver(()=>{if(inp.placeholder==="Enter command here...")inp.placeholder="Message AURVIX"}).observe(inp,{attributes:true,attributeFilter:["placeholder"]});
+})(); 
