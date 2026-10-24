@@ -367,3 +367,27 @@ page.querySelector(".hs-clear").onclick=()=>{if(confirm("Delete ALL chat history
   d.textContent='Created by Abbu and Ibad';
   document.body.appendChild(d);
 })();
+(function(){
+  var s=document.createElement('style');
+  s.textContent='#avxSub{display:block;margin-top:8px;font-size:12px;font-weight:400;letter-spacing:.4px;-webkit-text-fill-color:rgba(255,255,255,.65);color:rgba(255,255,255,.65)}';
+  document.head.appendChild(s);
+  function fix(){
+    var o=document.getElementById('avxCredit');if(o)o.remove();
+    var all=document.querySelectorAll('h1,h2,h3,p,div,span'),el=null;
+    for(var i=0;i<all.length;i++){
+      var e=all[i],t=e.textContent.trim();
+      if(/^Good (morning|afternoon|evening)/i.test(t)&&t.length<40&&!e.querySelector('#avxSub')){
+        var deeper=false;
+        for(var j=0;j<e.children.length;j++){if(/^Good (morning|afternoon|evening)/i.test(e.children[j].textContent.trim()))deeper=true}
+        if(!deeper){el=e;break}
+      }
+    }
+    if(!el)return;
+    while(el.parentElement&&/^Good/i.test(el.parentElement.textContent.trim())&&el.parentElement.textContent.trim().length<40)el=el.parentElement;
+    var w=el.textContent.trim().match(/^Good (morning|afternoon|evening)/i)[0];
+    el.textContent=w;
+    var d=document.createElement('span');d.id='avxSub';d.textContent='Created by Abbu and Ibad';
+    el.appendChild(d);
+  }
+  fix();setInterval(fix,1500);
+})();
