@@ -358,3 +358,12 @@ sq.oninput=render;
 page.querySelector(".hs-new").onclick=()=>{curId=null;clearChat();goTab("chat")};
 page.querySelector(".hs-clear").onclick=()=>{if(confirm("Delete ALL chat history?")){save([]);curId=null;render()}};
 })();
+(function(){
+  var s=document.createElement('style');
+  s.textContent='#avxCredit{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 74px);text-align:center;font-size:11px;letter-spacing:.5px;color:rgba(255,255,255,.55);pointer-events:none;z-index:5}';
+  document.head.appendChild(s);
+  var d=document.createElement('div');
+  d.id='avxCredit';
+  d.textContent='Created by Abbu and Ibad';
+  document.body.appendChild(d);
+})();
