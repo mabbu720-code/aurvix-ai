@@ -391,3 +391,28 @@ page.querySelector(".hs-clear").onclick=()=>{if(confirm("Delete ALL chat history
   }
   fix();setInterval(fix,1500);
 })();
+(function(){
+  var tb,cur=0,fromPop=false;
+  function btns(){return tb.querySelectorAll('button')}
+  function idx(){var b=btns();for(var i=0;i<b.length;i++)if(b[i].classList.contains('on'))return i;return cur}
+  function init(){
+    tb=document.getElementById('tabbar');
+    if(!tb)return false;
+    cur=idx();
+    history.replaceState({avx:cur},'');
+    new MutationObserver(function(){
+      var n=idx();
+      if(n===cur)return;
+      cur=n;
+      if(!fromPop)history.pushState({avx:n},'');
+    }).observe(tb,{attributes:true,attributeFilter:['class'],subtree:true});
+    window.addEventListener('popstate',function(e){
+      var s=e.state;
+      if(!s||typeof s.avx!=='number'||s.avx===cur)return;
+      var b=btns()[s.avx];
+      if(b){fromPop=true;b.click();setTimeout(function(){fromPop=false},150)}
+    });
+    return true;
+  }
+  var t=setInterval(function(){if(init())clearInterval(t)},300);
+})();
